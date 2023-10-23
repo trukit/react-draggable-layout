@@ -1,0 +1,25 @@
+{
+  "compilerOptions": {
+    "rootDir": "lib",
+    "target": "es5",
+    "module": "esnext",
+    "jsx": "react-jsx",
+    "outDir": "dist",
+    "strict": true,
+    "moduleResolution": "node",
+    "allowSyntheticDefaultImports": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true
+  },
+  "include": [
+    "lib/**/*.ts",
+    "lib/**/*.tsx"
+  ],
+  "exclude": [
+    "node_modules",
+    "*.js",
+    "dist",
+    "src"
+  ],
+}
