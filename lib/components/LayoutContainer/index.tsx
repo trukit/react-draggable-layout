@@ -1,52 +1,7 @@
-/** 屏幕宽度适配断点 */
-export interface BreakPoints {
-  [K: string]: number;
-}
-
-export interface Layout {
-  /** 每个布局组件的唯一key，不要重复 */
-  key: string;
-  /** 网格单位中，x的位置，例如网格 cols 为 12 份，其在第二份位置，则为 2 */
-  x: number;
-  /** 网格单位中，y的位置 */
-  y: number;
-  /** 网格单位中，布局组件宽度 */
-  w: number;
-  /** 网格单位中，布局组件高度 */
-  h: number;
-  /** 布局组件，最小的网格单位宽度 */
-  minW?: number;
-  /** 布局组件，最大的网格单位宽度 */
-  maxW?: number;
-  /** 布局组件，最小网格单位高度 */
-  minH?: number;
-  /** 布局组件，最大网格单位高度 */
-  maxH?: number;
-  /**
-   * 由 DragEvents (onDragStart, onDrag, onDragStop) 事件和 ResizeEvents (onResizeStart, onResize, onResizeStop) 事件触发后，改变其值
-   */
-  moved?: boolean;
-  /**
-   * 为 true，表示其 isDraggable: false` 和 `isResizable: false`，即不能拖拽和手动设置大小。
-   */
-  static?: boolean;
-  /**
-   * 默认 undefined。如果为 false，将不能被移动，并且会覆盖 static 的设置
-   */
-  isDraggable?: boolean;
-  /**
-   * 默认 undefined。如果为 false，将不能被改变大小，并且会覆盖 static 的设置
-   */
-  isResizable?: boolean;
-  /**
-   * 如果为 true，将只能在网格内拖拽
-   */
-  isBounded?: boolean;
-}
-
-export type Cols = Record<keyof BreakPoints, number>;
-
-export type Layouts = Record<keyof BreakPoints, Layout[]>;
+import * as React from 'react';
+import LayoutItem, { LayoutItemProps } from '../LayoutItem';
+import { BreakPoints, Cols, Layout, Layouts } from '../../types';
+import useSize from '../../hooks/useSize';
 
 export interface LayoutContainerProps {
   /** 页面适配，例如： { lg: 1920, md: 1680, sm: 1440, xs: 1280 } */
@@ -54,7 +9,7 @@ export interface LayoutContainerProps {
   /** 页面需要分成多少列，可以为数字，表示无论何种尺寸都分为这么多列，可以为 breakpoints 类型例如 { lg: 1920, md: 1680, sm: 1440, xs: 1280 } */
   cols?: number | Cols;
   /** 布局 */
-  layouts: Layouts;
+  layouts?: Layouts;
   /** 拖拽时的对象 */
   draggableHandle?: string;
   /** 拖动改变大小时的对象 */
@@ -63,12 +18,113 @@ export interface LayoutContainerProps {
   gap?: [number, number];
   /** 当布局切换 */
   onLayoutChange?: (currentLayout: Layout[], allLayouts: Layouts) => void;
+  /** 固定设置每一行的高度 */
+  rowHeight?: number;
   /** 如果为真，则只能在网格范围内拖拽 */
   isBounded?: boolean;
+  children: React.ReactNode;
+  className?: string;
 }
 
-const LayoutContainer: React.FC<LayoutContainerProps> = (props) => {
-  return <div className="rdl-container">1</div>;
+const LayoutContainer: React.FC<LayoutContainerProps> = ({ layouts, children, className, gap, cols, rowHeight }) => {
+  const containerRef = React.useRef<HTMLDivElement>(null);
+
+  const [clonedChildren, setClonedChildren] = React.useState<React.ReactElement<LayoutItemProps>[]>([]);
+
+  // 设置 margin
+  React.useEffect(() => {
+    if (!gap) return;
+    if (gap[0] <= 0 || gap[1] <= 0) return;
+    const container = containerRef.current;
+    if (!container) return;
+    const xMargin = gap[0] * 0.5;
+    const yMargin = gap[1] * 0.5;
+    container.style.marginLeft = `${-xMargin}px`;
+    container.style.marginRight = `${-xMargin}px`;
+    container.style.marginTop = `${-yMargin}px`;
+    container.style.marginBottom = `${-yMargin}px`;
+  }, [gap]);
+
+  /** 当前页面宽度所触发的布局 */
+  const memoBreakPointKey = React.useMemo<string>(() => {
+    return 'lg';
+  }, []);
+
+  /**
+   * 获取当前页面一行的列数
+   */
+  const memoColCount = React.useMemo<number>(() => {
+    let count;
+    if (cols) {
+      typeof cols === 'number' && (count = cols);
+      if (typeof cols === 'object') {
+        count = cols[memoBreakPointKey];
+      }
+    }
+    return count ?? 12;
+  }, [cols, memoBreakPointKey]);
+
+  const size = useSize(containerRef);
+  const memoRowHeight = React.useMemo<number>(() => {
+    if (rowHeight) return rowHeight;
+    const container = containerRef.current;
+    if (!container || !size) return 0;
+    return size.width / memoColCount;
+  }, [memoColCount, rowHeight, size]);
+
+  // clone LayoutItem
+  React.useEffect(() => {
+    const tempChildren: React.ReactElement<LayoutItemProps>[] = [];
+    let rowCount = 0;
+    React.Children.toArray(children).forEach((child) => {
+      if (!React.isValidElement(child) || (child as React.ReactElement).type !== LayoutItem) {
+        throw new Error('[react-dragger-layout] The children of LayoutContainer can only be LayoutItem components.');
+      }
+      const curChildren = child as React.ReactElement<LayoutItemProps>;
+      const key = curChildren.props.itemKey;
+      let ownerLayout = curChildren.props.layout;
+
+      // 若 LayoutItem 没有显示设置 layout 属性，且 LayoutContainer 有设置 layouts 属性，则从 layouts 内寻找
+      // 有的话替换没有的话仍旧是 LayoutItem 的 layout 属性
+      if (!ownerLayout && layouts) {
+        const layoutList = layouts[memoBreakPointKey];
+        ownerLayout = layoutList.find((item) => item.key === key) ?? ownerLayout;
+      }
+
+      if (!ownerLayout) return;
+      // 找到对应的其对应的 key
+      const tempChild = React.cloneElement(curChildren, {
+        itemKey: key,
+        layout: ownerLayout,
+        gap,
+        colCount: memoColCount,
+        rowHeight: memoRowHeight,
+      });
+      const bottom = ownerLayout.h + ownerLayout.y;
+      rowCount = Math.max(rowCount, bottom);
+      tempChildren.push(tempChild);
+      setClonedChildren(tempChildren);
+    });
+
+    console.log('rowCount', rowCount);
+    // 设置 LayoutContainer 的高度
+    if (containerRef.current) {
+      containerRef.current.style.height = `${rowCount * memoRowHeight}px`;
+    }
+  }, [children, layouts, gap, memoColCount, memoBreakPointKey, memoRowHeight]);
+
+  React.useEffect(() => {
+    console.log('breakpoint', memoBreakPointKey);
+    console.log('col', memoColCount);
+    console.log('size', size);
+    console.log('rowHeight', memoRowHeight);
+  }, [memoBreakPointKey, memoColCount, memoRowHeight, size]);
+
+  return (
+    <div ref={containerRef} className={`rdl-layoutContainer ${className ?? ''}`}>
+      {clonedChildren}
+    </div>
+  );
 };
 
 export default LayoutContainer;

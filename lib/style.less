@@ -1,9 +1,9 @@
-.box {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  width: 100px;
-  height: 100px;
-  background-color: black;
-  color: blue;
+.rdl-layoutContainer {
+  position: relative;
+  transition: left 0.3s ease-in-out, top 0.3s ease-in-out, width 0.3s ease-in-out, height 0.3s ease-in-out;
+
+  .rdl-layoutItem {
+    position: absolute;
+    box-sizing: border-box;
+  }
 }
