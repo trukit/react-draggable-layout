@@ -2,6 +2,7 @@ import * as React from 'react';
 import LayoutItem, { LayoutItemProps } from '../LayoutItem';
 import { BreakPoints, Cols, Layout, Layouts } from '../../types';
 import useSize from '../../hooks/useSize';
+import { getKeyByValue } from '../../utils';
 
 export interface LayoutContainerProps {
   /** 页面适配，例如： { lg: 1920, md: 1680, sm: 1440, xs: 1280 } */
@@ -18,7 +19,7 @@ export interface LayoutContainerProps {
   gap?: [number, number];
   /** 当布局切换 */
   onLayoutChange?: (currentLayout: Layout[], allLayouts: Layouts) => void;
-  /** 固定设置每一行的高度 */
+  /** 固定每一行的高度，未设置则为每一列的宽度值 */
   rowHeight?: number;
   /** 如果为真，则只能在网格范围内拖拽 */
   isBounded?: boolean;
@@ -26,7 +27,16 @@ export interface LayoutContainerProps {
   className?: string;
 }
 
-const LayoutContainer: React.FC<LayoutContainerProps> = ({ layouts, children, className, gap, cols, rowHeight }) => {
+const LayoutContainer: React.FC<LayoutContainerProps> = ({
+  breakpoints,
+  layouts,
+  children,
+  className,
+  gap,
+  cols,
+  rowHeight,
+  draggableHandle,
+}) => {
   const containerRef = React.useRef<HTMLDivElement>(null);
 
   const [clonedChildren, setClonedChildren] = React.useState<React.ReactElement<LayoutItemProps>[]>([]);
@@ -45,10 +55,25 @@ const LayoutContainer: React.FC<LayoutContainerProps> = ({ layouts, children, cl
     container.style.marginBottom = `${-yMargin}px`;
   }, [gap]);
 
+  const size = useSize(containerRef);
+
   /** 当前页面宽度所触发的布局 */
   const memoBreakPointKey = React.useMemo<string>(() => {
-    return 'lg';
-  }, []);
+    if (!breakpoints || !size) return '';
+    const breakList = Object.values(breakpoints)
+      .filter((n) => n > 0)
+      .sort((a, b) => b - a);
+    const { width } = size;
+    let curBreakPoint = breakList[breakList.length - 1];
+    for (const num of breakList) {
+      if (width >= num) {
+        curBreakPoint = num;
+        break;
+      }
+    }
+    const key = getKeyByValue<BreakPoints, string>(breakpoints, curBreakPoint);
+    return key || '';
+  }, [breakpoints, size]);
 
   /**
    * 获取当前页面一行的列数
@@ -64,9 +89,9 @@ const LayoutContainer: React.FC<LayoutContainerProps> = ({ layouts, children, cl
     return count ?? 12;
   }, [cols, memoBreakPointKey]);
 
-  const size = useSize(containerRef);
+  /** 获取每一行的高度 */
   const memoRowHeight = React.useMemo<number>(() => {
-    if (rowHeight) return rowHeight;
+    if (rowHeight) return Math.abs(rowHeight);
     const container = containerRef.current;
     if (!container || !size) return 0;
     return size.width / memoColCount;
@@ -88,7 +113,7 @@ const LayoutContainer: React.FC<LayoutContainerProps> = ({ layouts, children, cl
       // 有的话替换没有的话仍旧是 LayoutItem 的 layout 属性
       if (!ownerLayout && layouts) {
         const layoutList = layouts[memoBreakPointKey];
-        ownerLayout = layoutList.find((item) => item.key === key) ?? ownerLayout;
+        ownerLayout = layoutList?.find((item: Layout) => item.key === key) ?? ownerLayout;
       }
 
       if (!ownerLayout) return;
@@ -99,6 +124,7 @@ const LayoutContainer: React.FC<LayoutContainerProps> = ({ layouts, children, cl
         gap,
         colCount: memoColCount,
         rowHeight: memoRowHeight,
+        draggableHandle: curChildren.props.draggableHandle ?? draggableHandle,
       });
       const bottom = ownerLayout.h + ownerLayout.y;
       rowCount = Math.max(rowCount, bottom);
@@ -111,18 +137,21 @@ const LayoutContainer: React.FC<LayoutContainerProps> = ({ layouts, children, cl
     if (containerRef.current) {
       containerRef.current.style.height = `${rowCount * memoRowHeight}px`;
     }
-  }, [children, layouts, gap, memoColCount, memoBreakPointKey, memoRowHeight]);
+  }, [children, layouts, gap, memoColCount, memoBreakPointKey, memoRowHeight, draggableHandle]);
 
-  React.useEffect(() => {
+  // ========= TODO: 调试用，记得删除 ===========
+  React.useLayoutEffect(() => {
+    console.group(`LayoutContainer - ${size?.width}`);
     console.log('breakpoint', memoBreakPointKey);
     console.log('col', memoColCount);
-    console.log('size', size);
     console.log('rowHeight', memoRowHeight);
+    console.groupEnd();
   }, [memoBreakPointKey, memoColCount, memoRowHeight, size]);
 
   return (
     <div ref={containerRef} className={`rdl-layoutContainer ${className ?? ''}`}>
       {clonedChildren}
+      {/* TODO：在最后面添加占位块 */}
     </div>
   );
 };

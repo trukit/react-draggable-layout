@@ -1,6 +1,10 @@
 {
   "compilerOptions": {
     "rootDir": "lib",
+    "lib": [
+      "ESNext",
+      "DOM"
+    ],
     "target": "es5",
     "module": "esnext",
     "jsx": "react-jsx",

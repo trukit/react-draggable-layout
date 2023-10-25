@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { Layout } from '../../types';
-import { clamp } from '../../utils';
+import useLayout from '../../hooks/useLayout';
 
 export interface LayoutItemProps {
   itemKey: string;
@@ -10,6 +10,7 @@ export interface LayoutItemProps {
   rowHeight?: number;
   gap?: [number, number];
   className?: string;
+  draggableHandle?: string;
 }
 
 const LayoutItem: React.FC<LayoutItemProps> = ({
@@ -20,31 +21,34 @@ const LayoutItem: React.FC<LayoutItemProps> = ({
   colCount = 12,
   rowHeight,
   gap,
+  draggableHandle,
 }) => {
   const itemRef = React.useRef<HTMLDivElement>(null);
+  const draggableRef = React.useRef<HTMLElement | null>(null);
 
   console.group(itemKey);
   console.log('layout', layout);
   console.groupEnd();
 
-  // 设置布局
-  React.useEffect(() => {
-    const itemDiv = itemRef.current;
-    if (!itemDiv || !layout || !rowHeight) return;
-    const uint = 100 / colCount;
-    itemDiv.style.width = `${clamp(layout.w, layout.minW ?? layout.w, layout.maxW ?? layout.w) * uint}%`;
-    itemDiv.style.height = `${clamp(layout.h, layout.minH ?? layout.h, layout.maxH ?? layout.h) * rowHeight}px`;
-    itemDiv.style.left = `${layout.x * uint}%`;
-    itemDiv.style.top = layout.y === 0 ? '0px' : `${layout.y * rowHeight}px`;
-    itemDiv.style.paddingLeft = gap ? `${gap[0] * 0.5}px` : '0';
-    itemDiv.style.paddingRight = gap ? `${gap[0] * 0.5}px` : '0';
-    itemDiv.style.paddingTop = gap ? `${gap[1] * 0.5}px` : '0';
-    itemDiv.style.paddingBottom = gap ? `${gap[1] * 0.5}px` : '0';
-  }, [colCount, gap, layout, rowHeight]);
+  // 布局
+  useLayout(itemRef, {
+    layout,
+    colCount,
+    rowHeight,
+    gap,
+  });
+
+  // 注册拖拽移动事件
+  React.useLayoutEffect(() => {
+    if (!draggableHandle || !itemRef.current) return;
+    draggableRef.current = itemRef.current.querySelector(draggableHandle);
+
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
-    <div ref={itemRef} className={`rdl-layoutItem ${className ?? ''}`} key={itemKey}>
-      {children}
+    <div ref={itemRef} className="rdl-layoutItem" key={itemKey}>
+      <div className={`rdl-layoutItem-content ${className ?? ''}`}>{children}</div>
     </div>
   );
 };
