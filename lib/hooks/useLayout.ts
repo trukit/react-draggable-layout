@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { Layout } from '../types';
-import { clamp } from '../utils';
+import { clamp } from '../utils/tool';
 
 interface Options {
   layout?: Layout;

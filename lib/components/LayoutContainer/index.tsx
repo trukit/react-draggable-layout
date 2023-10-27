@@ -2,7 +2,7 @@ import * as React from 'react';
 import LayoutItem, { LayoutItemProps } from '../LayoutItem';
 import { BreakPoints, Cols, Layout, Layouts } from '../../types';
 import useSize from '../../hooks/useSize';
-import { getKeyByValue } from '../../utils';
+import { cls, getKeyByValue } from '../../utils/tool';
 
 export interface LayoutContainerProps {
   /** 页面适配，例如： { lg: 1920, md: 1680, sm: 1440, xs: 1280 } */
@@ -91,11 +91,11 @@ const LayoutContainer: React.FC<LayoutContainerProps> = ({
 
   /** 获取每一行的高度 */
   const memoRowHeight = React.useMemo<number>(() => {
-    if (rowHeight) return Math.abs(rowHeight);
+    if (rowHeight) return gap ? Math.abs(rowHeight) + gap[1] : Math.abs(rowHeight);
     const container = containerRef.current;
     if (!container || !size) return 0;
     return size.width / memoColCount;
-  }, [memoColCount, rowHeight, size]);
+  }, [gap, memoColCount, rowHeight, size]);
 
   // clone LayoutItem
   React.useEffect(() => {
@@ -140,16 +140,16 @@ const LayoutContainer: React.FC<LayoutContainerProps> = ({
   }, [children, layouts, gap, memoColCount, memoBreakPointKey, memoRowHeight, draggableHandle]);
 
   // ========= TODO: 调试用，记得删除 ===========
-  React.useLayoutEffect(() => {
-    console.group(`LayoutContainer - ${size?.width}`);
-    console.log('breakpoint', memoBreakPointKey);
-    console.log('col', memoColCount);
-    console.log('rowHeight', memoRowHeight);
-    console.groupEnd();
-  }, [memoBreakPointKey, memoColCount, memoRowHeight, size]);
+  // React.useLayoutEffect(() => {
+  //   console.group(`LayoutContainer - ${size?.width}`);
+  //   console.log('breakpoint', memoBreakPointKey);
+  //   console.log('col', memoColCount);
+  //   console.log('rowHeight', memoRowHeight);
+  //   console.groupEnd();
+  // }, [memoBreakPointKey, memoColCount, memoRowHeight, size]);
 
   return (
-    <div ref={containerRef} className={`rdl-layoutContainer ${className ?? ''}`}>
+    <div ref={containerRef} className={cls('rdl-layoutContainer', className)}>
       {clonedChildren}
       {/* TODO：在最后面添加占位块 */}
     </div>

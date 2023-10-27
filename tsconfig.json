@@ -21,6 +21,7 @@
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true,
+    "ignoreDeprecations": "5.0",
     "paths": {
       "@zeus/react-dragger-layout": [
         "./lib"
@@ -29,7 +30,7 @@
   },
   "include": [
     "devSrc",
-    "lib"
+    "lib/**/*/ts"
   ],
   "exclude": [
     "node_modules"

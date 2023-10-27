@@ -1,6 +1,8 @@
 import * as React from 'react';
 import { Layout } from '../../types';
 import useLayout from '../../hooks/useLayout';
+import Draggable from '../../operation/Draggable1';
+import { cls } from '../../utils/tool';
 
 export interface LayoutItemProps {
   itemKey: string;
@@ -25,6 +27,9 @@ const LayoutItem: React.FC<LayoutItemProps> = ({
 }) => {
   const itemRef = React.useRef<HTMLDivElement>(null);
   const draggableRef = React.useRef<HTMLElement | null>(null);
+  const draggableStartPos = React.useRef<[number, number]>([0, 0]);
+
+  const [isDragging, setIsDragging] = React.useState<boolean>(false);
 
   console.group(itemKey);
   console.log('layout', layout);
@@ -43,12 +48,28 @@ const LayoutItem: React.FC<LayoutItemProps> = ({
     if (!draggableHandle || !itemRef.current) return;
     draggableRef.current = itemRef.current.querySelector(draggableHandle);
 
+    if (draggableRef.current) {
+      new Draggable(itemRef.current, {
+        onStart: onDragStart,
+      });
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const onDragStart = React.useCallback(() => {
+    console.log('==== onDragStart');
+    setIsDragging(true);
+  }, []);
+
+  const onDragMove = React.useCallback((offset: [number, number]) => {}, []);
+
+  const onDragEnd = React.useCallback(() => {
+    setIsDragging(false);
+  }, []);
+
   return (
-    <div ref={itemRef} className="rdl-layoutItem" key={itemKey}>
-      <div className={`rdl-layoutItem-content ${className ?? ''}`}>{children}</div>
+    <div ref={itemRef} className={cls('rdl-layoutItem', { rdl_draggable__dragging: isDragging })} key={itemKey}>
+      <div className={cls('rdl-layoutItem-content', className)}>{children}</div>
     </div>
   );
 };
