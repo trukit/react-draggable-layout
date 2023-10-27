@@ -1,4 +1,4 @@
-import Draggable from './Draggable1';
+import Draggable from './Draggable';
 
 export class Manager {
   public static mouseHandled: boolean = false;

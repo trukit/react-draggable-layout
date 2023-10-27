@@ -1,7 +1,7 @@
 import * as React from 'react';
 import { Layout } from '../../types';
 import useLayout from '../../hooks/useLayout';
-import Draggable from '../../operation/Draggable1';
+import Draggable from '../../operation/Draggable';
 import { cls } from '../../utils/tool';
 
 export interface LayoutItemProps {
@@ -27,7 +27,6 @@ const LayoutItem: React.FC<LayoutItemProps> = ({
 }) => {
   const itemRef = React.useRef<HTMLDivElement>(null);
   const draggableRef = React.useRef<HTMLElement | null>(null);
-  const draggableStartPos = React.useRef<[number, number]>([0, 0]);
 
   const [isDragging, setIsDragging] = React.useState<boolean>(false);
 
@@ -50,7 +49,9 @@ const LayoutItem: React.FC<LayoutItemProps> = ({
 
     if (draggableRef.current) {
       new Draggable(itemRef.current, {
+        handle: draggableHandle,
         onStart: onDragStart,
+        onStop: onDragStop,
       });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -63,7 +64,7 @@ const LayoutItem: React.FC<LayoutItemProps> = ({
 
   const onDragMove = React.useCallback((offset: [number, number]) => {}, []);
 
-  const onDragEnd = React.useCallback(() => {
+  const onDragStop = React.useCallback(() => {
     setIsDragging(false);
   }, []);
 

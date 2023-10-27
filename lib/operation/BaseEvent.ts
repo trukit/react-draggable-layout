@@ -15,6 +15,10 @@ export abstract class BaseEvent {
     }
   }
 
+  public off(event: string): void {
+    delete this._eventMap[event];
+  }
+
   public enable(): void {
     this._disabled = false;
   }
@@ -24,7 +28,7 @@ export abstract class BaseEvent {
   }
 
   /** Whether the operation type is disabled. */
-  protected _disabled: boolean = false;
+  protected _disabled: boolean = true;
   protected _eventMap: {
     [eventName: string]: EventCallback;
   } = {};

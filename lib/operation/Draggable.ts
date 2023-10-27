@@ -1,12 +1,13 @@
-import { addStyles, isChildNode } from '../utils/dom';
+import { addStyles } from '../utils/dom';
 import { Manager } from './manager';
 import { BaseEvent } from './BaseEvent';
+import { DragUI } from '../types';
 
 interface DraggableOptions {
   /** name of the css class that triggers the drag */
   handle?: string;
   onStart?: () => void;
-  onDrag?: (offset: [number, number]) => void;
+  onDrag?: (ui: DragUI) => void;
   onStop?: () => void;
   onDisabled?: () => void;
   onEnable?: () => void;
@@ -21,6 +22,8 @@ interface DragOffset {
   offsetTop: number;
 }
 
+type DragEvent = 'drag' | 'dragstart' | 'dragstop';
+
 const skipMouseDown = 'input,textarea,button,select,option,[contenteditable="true"],.rdl-resizable-handle';
 
 export default class Draggable extends BaseEvent {
@@ -30,7 +33,7 @@ export default class Draggable extends BaseEvent {
 
   protected mouseDownEvent: MouseEvent | null = null;
   protected dragOffset: DragOffset | null = null;
-  protected dragElementOriginStyle: Array<string> = [];
+  protected dragItemOriginStyle: Partial<CSSStyleDeclaration> = {};
   protected dragEl: HTMLElement | null = null;
   protected helperContainer: HTMLElement | null = null;
   protected dragging: boolean = false;
@@ -58,6 +61,7 @@ export default class Draggable extends BaseEvent {
       this.dragEl = el;
     }
 
+    console.log(this.dragEl);
     this._mouseDown = this._mouseDown.bind(this);
     this._mouseMove = this._mouseMove.bind(this);
     this._mouseUp = this._mouseUp.bind(this);
@@ -68,6 +72,7 @@ export default class Draggable extends BaseEvent {
   enable(): void {
     if (!this.disabled) return;
     super.enable();
+    console.log('--- enable', this.dragEl);
     this.dragEl?.addEventListener('mousedown', this._mouseDown);
     this.options.onEnable?.();
   }
@@ -87,6 +92,18 @@ export default class Draggable extends BaseEvent {
     this.options = {};
   }
 
+  ui(): DragUI {
+    const containerEl = this.el.parentElement;
+    const containerRect = (containerEl as HTMLElement).getBoundingClientRect();
+    const offset = (this.helper as HTMLElement).getBoundingClientRect();
+    return {
+      position: {
+        top: offset.top - containerRect.top,
+        left: offset.left - containerRect.left,
+      },
+    };
+  }
+
   protected _mouseDown(e: MouseEvent): boolean {
     // prevent multiple LayoutItem from triggering mouseStart
     if (Manager.mouseHandled) return false;
@@ -94,6 +111,8 @@ export default class Draggable extends BaseEvent {
     if (e.button !== 0) return true;
     // make sure there are no elements that take effect until the trigger mousedown is clicked.
     if ((e.target as HTMLElement).closest(skipMouseDown)) return true;
+
+    console.log('触发拖拽的元素，点击');
 
     this.mouseDownEvent = e;
     this.dragging = false;
@@ -108,11 +127,19 @@ export default class Draggable extends BaseEvent {
     return true;
   }
 
+  protected _callDrag(e: MouseEvent) {
+    if (!this.dragging) return;
+    this.options.onDrag?.(this.ui());
+    this.trigger('drag', e);
+  }
+
   protected _mouseMove(e: MouseEvent): boolean {
     const s = this.mouseDownEvent as MouseEvent;
 
     if (this.dragging) {
-      // TODO：通知元素移动
+      this._dragFollow(e);
+      this._callDrag(e);
+      // TODO: 可以做延时优化
     } else if (Math.abs(e.x - s.x) + Math.abs(e.y - s.y) > 3) {
       this.dragging = true;
       Manager.dragElement = this;
@@ -134,14 +161,23 @@ export default class Draggable extends BaseEvent {
     document.removeEventListener('mouseup', this._mouseUp, true);
     if (this.dragging) {
       this.dragging = false;
+
+      (this.helperContainer as HTMLElement).style.position = this.containerOriginStylePosition || '';
+      this._removeHelperStyle();
+      this.options.onStop?.();
     }
+    this.helper = null;
+    this.mouseDownEvent = null;
+    Manager.dragElement = null;
+    Manager.mouseHandled = false;
     e.preventDefault();
   }
 
   protected _createHelper(e: MouseEvent): HTMLElement {
-    this.dragElementOriginStyle = Draggable.originStyleProp.map(
-      (props: string) => (this.el as HTMLElement).style[props as any],
-    );
+    for (const props of Draggable.originStyleProp) {
+      this.dragItemOriginStyle[props as any] = (this.el as HTMLElement).style[props as any];
+    }
+    console.log('---- dragItemOriginStyle', this.dragItemOriginStyle);
     return this.el as HTMLElement;
   }
 
@@ -154,7 +190,30 @@ export default class Draggable extends BaseEvent {
     style.willChange = 'left, top';
     // Make drag and drop not limited to the parent node Container range
     style.position = 'fixed';
+    style.transition = 'none';
+    this._dragFollow(e);
     return this;
+  }
+
+  protected _removeHelperStyle(): Draggable {
+    if (this.dragItemOriginStyle) {
+      const helper = this.helper as HTMLElement;
+      const transition = this.dragItemOriginStyle['transition'] || '';
+      this.dragItemOriginStyle['transition'] = 'none';
+      helper.style.transition = 'none';
+      for (const props of Draggable.originStyleProp) {
+        helper.style[props as any] = this.dragItemOriginStyle[props as any] || '';
+      }
+      setTimeout(() => (helper.style.transition = transition), 50);
+    }
+    return this;
+  }
+
+  protected _dragFollow(e: MouseEvent) {
+    const { style } = this.helper as HTMLElement;
+    const offset = this.dragOffset as DragOffset;
+    style.left = `${e.clientX + offset.offsetLeft}px`;
+    style.top = `${e.clientY + offset.offsetTop}px`;
   }
 
   protected _initHelperContainerStyle(): Draggable {

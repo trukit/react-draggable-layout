@@ -47,3 +47,19 @@ export interface Layout {
 export type Cols = Record<keyof BreakPoints, number>;
 
 export type Layouts = Record<keyof BreakPoints, Layout[]>;
+
+export interface Size {
+  width: number;
+  height: number;
+}
+
+export interface Position {
+  top: number;
+  left: number;
+}
+
+export interface DragUI {
+  position?: Position;
+  size?: Size;
+  draggable?: HTMLElement;
+}
