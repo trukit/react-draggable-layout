@@ -29,8 +29,8 @@
     }
   },
   "include": [
-    "devSrc",
-    "lib/**/*/ts"
+    "devSrc/**/*",
+    "lib/**/*"
   ],
   "exclude": [
     "node_modules"

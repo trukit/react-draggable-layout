@@ -1,8 +1,9 @@
 import * as React from 'react';
-import { Layout } from '../../types';
+import { DragUI, Layout } from '../../types';
 import useLayout from '../../hooks/useLayout';
-import Draggable from '../../operation/Draggable';
+import Draggable from '../../core/Draggable';
 import { cls } from '../../utils/tool';
+import useRefFunction from '../../hooks/useRefFunction';
 
 export interface LayoutItemProps {
   itemKey: string;
@@ -13,6 +14,10 @@ export interface LayoutItemProps {
   gap?: [number, number];
   className?: string;
   draggableHandle?: string;
+  // 拖拽相关事件
+  onLayoutDragStart?: (currentLayout: Layout) => void;
+  onLayoutDragMove?: (currentLayout: Layout, ui: DragUI) => void;
+  onLayoutDragEnd?: (currentLayout: Layout) => void;
 }
 
 const LayoutItem: React.FC<LayoutItemProps> = ({
@@ -24,7 +29,11 @@ const LayoutItem: React.FC<LayoutItemProps> = ({
   rowHeight,
   gap,
   draggableHandle,
+  onLayoutDragStart,
+  onLayoutDragMove,
+  onLayoutDragEnd,
 }) => {
+  // ======== Elements Ref ============
   const itemRef = React.useRef<HTMLDivElement>(null);
   const draggableRef = React.useRef<HTMLElement | null>(null);
 
@@ -50,27 +59,42 @@ const LayoutItem: React.FC<LayoutItemProps> = ({
     if (draggableRef.current) {
       new Draggable(itemRef.current, {
         handle: draggableHandle,
-        onStart: onDragStart,
-        onStop: onDragStop,
+        onStart: handleDragStart,
+        onDrag: handleDragMove,
+        onStop: handleDragEnd,
       });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const onDragStart = React.useCallback(() => {
-    console.log('==== onDragStart');
+  // ======== Layout Draggable ============
+  const handleDragStart = useRefFunction(() => {
+    // console.log('==== onDragStart');
     setIsDragging(true);
-  }, []);
+    if (layout && onLayoutDragStart) {
+      onLayoutDragStart(layout);
+    }
+  }, [layout, onLayoutDragStart]);
 
-  const onDragMove = React.useCallback((offset: [number, number]) => {}, []);
+  const handleDragMove = useRefFunction(
+    (dragUI: DragUI) => {
+      if (layout && onLayoutDragMove) {
+        onLayoutDragMove(layout, dragUI);
+      }
+    },
+    [layout, onLayoutDragMove],
+  );
 
-  const onDragStop = React.useCallback(() => {
+  const handleDragEnd = useRefFunction(() => {
     setIsDragging(false);
-  }, []);
+    if (layout && onLayoutDragEnd) {
+      onLayoutDragEnd(layout);
+    }
+  }, [layout, onLayoutDragEnd]);
 
   return (
-    <div ref={itemRef} className={cls('rdl-layoutItem', { rdl_draggable__dragging: isDragging })} key={itemKey}>
-      <div className={cls('rdl-layoutItem-content', className)}>{children}</div>
+    <div ref={itemRef} className={cls('rdl-item', { rdl_draggable__dragging: isDragging })} key={itemKey}>
+      <div className={cls('rdl-item-content', className)}>{children}</div>
     </div>
   );
 };

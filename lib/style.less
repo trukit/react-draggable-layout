@@ -1,8 +1,8 @@
-.rdl-layoutContainer {
+.rdl-container {
   position: relative;
   transition: left 0.3s ease-in-out, top 0.3s ease-in-out, width 0.3s ease-in-out, height 0.3s ease-in-out;
 
-  .rdl-layoutItem {
+  .rdl-item {
     position: absolute;
     box-sizing: border-box;
     z-index: 0;
@@ -16,7 +16,7 @@
     &.rdl_resizable__resizing {
       z-index: 1000;
 
-      .rdl-layoutItem-content {
+      .rdl-item-content {
         box-shadow: 1px 4px 6px rgba(0, 0, 0, 0.2);
         opacity: 0.8;
       }
@@ -24,22 +24,38 @@
 
     &.rdl_draggable__dragging {
       will-change: left, top;
-      cursor: move;
     }
 
     &.rdl_resizable__resizing {
       will-change: width, height;
     }
 
-    .rdl-layoutItem-content {
+    .rdl-item-content {
+      position: relative;
+      margin: 0;
       width: 100%;
       height: 100%;
+      overflow: hidden;
     }
   }
 
   .rdl-placeholder {
     position: absolute;
+    box-sizing: border-box;
     z-index: 0;
+    display: none;
+    > .rdl-placeholder-content {
+      position: relative;
+      margin: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background-color: rgba(0, 0, 0, 0.1);
+    }
+
+    &.rdl-placeholder__active {
+      display: block;
+    }
   }
 }
 

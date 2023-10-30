@@ -1,8 +1,43 @@
-import '@zeus/react-dragger-layout/style.less';
 import { LayoutContainer, LayoutItem } from '../lib';
 import { Layouts } from '../lib/types';
 
-import './App.less';
+import styled from 'styled-components';
+
+const LayoutWrapper = styled(LayoutContainer)`
+  background-color: #e2e2e2;
+  .box {
+    width: 100%;
+    height: 100%;
+    box-sizing: border-box;
+    background-color: #fff;
+    > div:nth-child(2) {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+  }
+  .draggable {
+    top: 6px;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    position: absolute;
+    width: 50px;
+    height: 10px;
+    cursor: grab;
+    hr {
+      border: none;
+      width: 100%;
+      margin-top: 3px;
+      border-top: 4px solid #e2e2e2;
+      transition: all 0.3s ease-in-out;
+    }
+    &:hover hr {
+      border-color: #00ba3d;
+    }
+  }
+`;
 
 const REACT_GRID_LAYOUT_BEDROCK: Layouts = {
   lg: [
@@ -23,10 +58,11 @@ const REACT_GRID_LAYOUT_BEDROCK: Layouts = {
   ],
 };
 
-function App() {
+function ChartDemo() {
   return (
     <main>
-      <LayoutContainer
+      <h1>ChartLayout Demo</h1>
+      <LayoutWrapper
         className="container"
         breakpoints={{ lg: 1200, md: 780 }}
         cols={{ lg: 24, md: 20 }}
@@ -72,9 +108,9 @@ function App() {
           </div>
           <div>details</div>
         </LayoutItem>
-      </LayoutContainer>
+      </LayoutWrapper>
     </main>
   );
 }
 
-export default App;
+export default ChartDemo;

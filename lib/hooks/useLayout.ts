@@ -29,7 +29,9 @@ function useLayout(layoutRef: React.RefObject<HTMLElement> | null, options: Opti
 
   React.useLayoutEffect(() => {
     const layoutEl = layoutRef?.current;
+    console.log(layoutEl);
     if (!layoutEl || !layout || !rowHeight) return;
+    console.log('布局');
     const uint = 100 / colCount;
     layoutEl.style.width = `${clampW * uint}%`;
     layoutEl.style.height = `${clampH * rowHeight}px`;

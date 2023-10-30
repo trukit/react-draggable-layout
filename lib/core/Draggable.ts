@@ -24,7 +24,7 @@ interface DragOffset {
 
 type DragEvent = 'drag' | 'dragstart' | 'dragstop';
 
-const skipMouseDown = 'input,textarea,button,select,option,[contenteditable="true"],.rdl-resizable-handle';
+const mouseDownIgnore = 'input,textarea,button,select,option,[contenteditable="true"],.rdl-resizable-handle';
 
 export default class Draggable extends BaseEvent {
   public el: HTMLElement;
@@ -61,7 +61,6 @@ export default class Draggable extends BaseEvent {
       this.dragEl = el;
     }
 
-    console.log(this.dragEl);
     this._mouseDown = this._mouseDown.bind(this);
     this._mouseMove = this._mouseMove.bind(this);
     this._mouseUp = this._mouseUp.bind(this);
@@ -72,7 +71,7 @@ export default class Draggable extends BaseEvent {
   enable(): void {
     if (!this.disabled) return;
     super.enable();
-    console.log('--- enable', this.dragEl);
+    // console.log('--- enable', this.dragEl);
     this.dragEl?.addEventListener('mousedown', this._mouseDown);
     this.options.onEnable?.();
   }
@@ -110,9 +109,7 @@ export default class Draggable extends BaseEvent {
     // only left click
     if (e.button !== 0) return true;
     // make sure there are no elements that take effect until the trigger mousedown is clicked.
-    if ((e.target as HTMLElement).closest(skipMouseDown)) return true;
-
-    console.log('触发拖拽的元素，点击');
+    if ((e.target as HTMLElement).closest(mouseDownIgnore)) return true;
 
     this.mouseDownEvent = e;
     this.dragging = false;
@@ -124,6 +121,7 @@ export default class Draggable extends BaseEvent {
     if (document.activeElement) (document.activeElement as HTMLElement).blur();
 
     Manager.mouseHandled = true;
+    document.body.style.cursor = 'grabbing';
     return true;
   }
 
@@ -164,6 +162,7 @@ export default class Draggable extends BaseEvent {
 
       (this.helperContainer as HTMLElement).style.position = this.containerOriginStylePosition || '';
       this._removeHelperStyle();
+      document.body.style.cursor = 'auto';
       this.options.onStop?.();
     }
     this.helper = null;
@@ -177,7 +176,7 @@ export default class Draggable extends BaseEvent {
     for (const props of Draggable.originStyleProp) {
       this.dragItemOriginStyle[props as any] = (this.el as HTMLElement).style[props as any];
     }
-    console.log('---- dragItemOriginStyle', this.dragItemOriginStyle);
+    // console.log('---- dragItemOriginStyle', this.dragItemOriginStyle);
     return this.el as HTMLElement;
   }
 

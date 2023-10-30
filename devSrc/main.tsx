@@ -1,4 +1,19 @@
 import ReactDOM from 'react-dom/client';
-import App from './App.tsx';
+import { createBrowserRouter, RouterProvider } from 'react-router-dom';
+import ChartDemo from './ChartDemo.tsx';
+import Demo1 from './Demo1.tsx';
 
-ReactDOM.createRoot(document.getElementById('root')!).render(<App />);
+import '@zeus/react-dragger-layout/style.less';
+
+const router = createBrowserRouter([
+  {
+    path: '/',
+    element: <Demo1 />,
+  },
+  {
+    path: '/chart',
+    element: <ChartDemo />,
+  },
+]);
+
+ReactDOM.createRoot(document.getElementById('root')!).render(<RouterProvider router={router} />);

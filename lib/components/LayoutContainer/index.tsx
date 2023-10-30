@@ -1,25 +1,26 @@
 import * as React from 'react';
 import LayoutItem, { LayoutItemProps } from '../LayoutItem';
-import { BreakPoints, Cols, Layout, Layouts } from '../../types';
+import { BreakPoints, Cols, DragUI, Layout, Layouts } from '../../types';
 import useSize from '../../hooks/useSize';
 import { cls, getKeyByValue } from '../../utils/tool';
+import Placeholder from '../Placeholder';
 
 export interface LayoutContainerProps {
   /** 页面适配，例如： { lg: 1920, md: 1680, sm: 1440, xs: 1280 } */
   breakpoints?: BreakPoints;
-  /** 页面需要分成多少列，可以为数字，表示无论何种尺寸都分为这么多列，可以为 breakpoints 类型例如 { lg: 1920, md: 1680, sm: 1440, xs: 1280 } */
+  /** 页面需要分成多少列，可以为数字，表示无论何种尺寸都分为这么多列，可以为 breakpoints 类型例如 { lg: 22, md: 20, sm: 18, xs: 14 } */
   cols?: number | Cols;
   /** 布局 */
   layouts?: Layouts;
-  /** 拖拽时的对象 */
+  /** 触发拖拽的元素 css 类名，默认为整个 item */
   draggableHandle?: string;
   /** 拖动改变大小时的对象 */
   resizeableHandle?: string;
-  /** 相邻距离，x 轴与 y 轴 */
+  /** item 相邻距离，x 轴与 y 轴 */
   gap?: [number, number];
-  /** 当布局切换 */
+  /** 当布局切换时触发 */
   onLayoutChange?: (currentLayout: Layout[], allLayouts: Layouts) => void;
-  /** 固定每一行的高度，未设置则为每一列的宽度值 */
+  /** 固定每一行的高度，未设置则等于单位列的宽度值 */
   rowHeight?: number;
   /** 如果为真，则只能在网格范围内拖拽 */
   isBounded?: boolean;
@@ -38,7 +39,6 @@ const LayoutContainer: React.FC<LayoutContainerProps> = ({
   draggableHandle,
 }) => {
   const containerRef = React.useRef<HTMLDivElement>(null);
-
   const [clonedChildren, setClonedChildren] = React.useState<React.ReactElement<LayoutItemProps>[]>([]);
 
   // 设置 margin
@@ -97,7 +97,28 @@ const LayoutContainer: React.FC<LayoutContainerProps> = ({
     return size.width / memoColCount;
   }, [gap, memoColCount, rowHeight, size]);
 
-  // clone LayoutItem
+  /** Placeholder Layout */
+  const [placeholderKey, setPlaceholderKey] = React.useState<string>('');
+  const [placeholderLayout, setPlaceholderLayout] = React.useState<Layout>();
+
+  // ======== Layout Draggable ============
+  const handleDragStart = React.useCallback((curLayout: Layout) => {
+    console.log('[Container] darg start', curLayout);
+    setPlaceholderLayout({ ...curLayout });
+    setPlaceholderKey(curLayout.key);
+  }, []);
+
+  const handleDragMove = React.useCallback((curLayout: Layout, ui: DragUI) => {
+    // console.log('[Container] darg move', curLayout, ui);
+  }, []);
+
+  const handleDragEnd = React.useCallback((curLayout: Layout) => {
+    console.log('[Container] darg end', curLayout);
+    setPlaceholderKey('');
+    setPlaceholderLayout(undefined);
+  }, []);
+
+  // ======== Update LayoutItem ============
   React.useEffect(() => {
     const tempChildren: React.ReactElement<LayoutItemProps>[] = [];
     let rowCount = 0;
@@ -125,6 +146,9 @@ const LayoutContainer: React.FC<LayoutContainerProps> = ({
         colCount: memoColCount,
         rowHeight: memoRowHeight,
         draggableHandle: curChildren.props.draggableHandle ?? draggableHandle,
+        onLayoutDragStart: handleDragStart,
+        onLayoutDragMove: handleDragMove,
+        onLayoutDragEnd: handleDragEnd,
       });
       const bottom = ownerLayout.h + ownerLayout.y;
       rowCount = Math.max(rowCount, bottom);
@@ -137,7 +161,18 @@ const LayoutContainer: React.FC<LayoutContainerProps> = ({
     if (containerRef.current) {
       containerRef.current.style.height = `${rowCount * memoRowHeight}px`;
     }
-  }, [children, layouts, gap, memoColCount, memoBreakPointKey, memoRowHeight, draggableHandle]);
+  }, [
+    children,
+    layouts,
+    gap,
+    memoColCount,
+    memoBreakPointKey,
+    memoRowHeight,
+    draggableHandle,
+    handleDragStart,
+    handleDragMove,
+    handleDragEnd,
+  ]);
 
   // ========= TODO: 调试用，记得删除 ===========
   // React.useLayoutEffect(() => {
@@ -148,10 +183,18 @@ const LayoutContainer: React.FC<LayoutContainerProps> = ({
   //   console.groupEnd();
   // }, [memoBreakPointKey, memoColCount, memoRowHeight, size]);
 
+  console.log('container refresh =======');
+
   return (
-    <div ref={containerRef} className={cls('rdl-layoutContainer', className)}>
+    <div ref={containerRef} className={cls('rdl-container', className)}>
       {clonedChildren}
-      {/* TODO：在最后面添加占位块 */}
+      <Placeholder
+        active={!!placeholderKey}
+        layout={placeholderLayout}
+        colCount={memoColCount}
+        rowHeight={memoRowHeight}
+        gap={gap}
+      />
     </div>
   );
 };
