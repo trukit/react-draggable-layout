@@ -68,6 +68,14 @@ export default class Draggable extends BaseEvent {
     this.enable();
   }
 
+  updateOptions(options: DraggableOptions) {
+    console.log('更新 options');
+    this.options = {
+      ...this.options,
+      ...options,
+    };
+  }
+
   enable(): void {
     if (!this.disabled) return;
     super.enable();

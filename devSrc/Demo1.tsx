@@ -36,12 +36,12 @@ const LayoutWrapper = styled(LayoutContainer)`
 
 const REACT_GRID_LAYOUT_BEDROCK: Layouts = {
   xs: [
-    { key: 'item1', x: 0, y: 0, w: 2, h: 2 },
-    { key: 'item2', x: 2, y: 0, w: 2, h: 2 },
-    { key: 'item3', x: 4, y: 0, w: 2, h: 2 },
-    { key: 'item4', x: 6, y: 0, w: 2, h: 2 },
-    { key: 'item5', x: 0, y: 2, w: 4, h: 2 },
-    { key: 'item6', x: 4, y: 2, w: 4, h: 2 },
+    { id: 'item1', x: 0, y: 0, w: 2, h: 2 },
+    { id: 'item2', x: 2, y: 0, w: 2, h: 2 },
+    { id: 'item3', x: 4, y: 0, w: 2, h: 2 },
+    { id: 'item4', x: 6, y: 0, w: 2, h: 2 },
+    { id: 'item5', x: 0, y: 2, w: 4, h: 2 },
+    { id: 'item6', x: 4, y: 2, w: 4, h: 2 },
   ],
 };
 
@@ -51,40 +51,42 @@ function Demo1() {
   return (
     <main>
       <h1>Demo1</h1>
-      <LayoutWrapper
-        className="container"
-        breakpoints={{ xs: 780 }}
-        cols={{ xs: 12 }}
-        draggableHandle=".draggable"
-        layouts={REACT_GRID_LAYOUT_BEDROCK}
-        gap={[8, 8]}
-        isBounded
-      >
-        <LayoutItem className="box" itemKey="item1">
-          <div className="draggable" />
-          <div>item1</div>
-        </LayoutItem>
-        <LayoutItem className="box" itemKey="item2">
-          <div className="draggable" />
-          <div>item2</div>
-        </LayoutItem>
-        <LayoutItem className="box" itemKey="item3">
-          <div className="draggable" />
-          <div>item3</div>
-        </LayoutItem>
-        <LayoutItem className="box" itemKey="item4">
-          <div className="draggable" />
-          <div>item4</div>
-        </LayoutItem>
-        <LayoutItem className="box" itemKey="item5">
-          <div className="draggable" />
-          <div>item5</div>
-        </LayoutItem>
-        <LayoutItem className="box" itemKey="item6">
-          <div className="draggable" />
-          <div>item6</div>
-        </LayoutItem>
-      </LayoutWrapper>
+      <div>
+        <LayoutWrapper
+          className="container"
+          breakpoints={{ xs: 780 }}
+          cols={{ xs: 12 }}
+          draggableHandle=".draggable"
+          layouts={REACT_GRID_LAYOUT_BEDROCK}
+          gap={[8, 8]}
+          isBounded
+        >
+          <LayoutItem className="box" id="item1">
+            <div className="draggable" />
+            <div>item1</div>
+          </LayoutItem>
+          <LayoutItem className="box" id="item2">
+            <div className="draggable" />
+            <div>item2</div>
+          </LayoutItem>
+          <LayoutItem className="box" id="item3">
+            <div className="draggable" />
+            <div>item3</div>
+          </LayoutItem>
+          <LayoutItem className="box" id="item4">
+            <div className="draggable" />
+            <div>item4</div>
+          </LayoutItem>
+          <LayoutItem className="box" id="item5">
+            <div className="draggable" />
+            <div>item5</div>
+          </LayoutItem>
+          <LayoutItem className="box" id="item6">
+            <div className="draggable" />
+            <div>item6</div>
+          </LayoutItem>
+        </LayoutWrapper>
+      </div>
     </main>
   );
 }

@@ -3,9 +3,7 @@ export interface BreakPoints {
   [K: string]: number;
 }
 
-export interface Layout {
-  /** 每个布局组件的唯一key，不要重复 */
-  key: string;
+export interface LayoutPosition {
   /** 网格单位中，x的位置，例如网格 cols 为 12 份，其在第二份位置，则为 2 */
   x: number;
   /** 网格单位中，y的位置 */
@@ -14,6 +12,11 @@ export interface Layout {
   w: number;
   /** 网格单位中，布局组件高度 */
   h: number;
+}
+
+export interface Layout extends LayoutPosition {
+  /** 每个布局组件的唯一key，不要重复 */
+  id: string;
   /** 布局组件，最小的网格单位宽度 */
   minW?: number;
   /** 布局组件，最大的网格单位宽度 */
@@ -38,10 +41,10 @@ export interface Layout {
    * 默认 undefined。如果为 false，将不能被改变大小，并且会覆盖 static 的设置
    */
   isResizable?: boolean;
-  /**
-   * 如果为 true，将只能在网格内拖拽
-   */
-  isBounded?: boolean;
+}
+
+export interface LayoutMap {
+  [key: string]: Layout;
 }
 
 export type Cols = Record<keyof BreakPoints, number>;

@@ -8,6 +8,7 @@ function useRefFunction<T extends Function>(callback: T, deps: DependencyList): 
   const fn = React.useCallback(callback, deps);
 
   React.useEffect(() => {
+    console.log('函数改变');
     fnRef.current = fn;
   }, [fn]);
 
