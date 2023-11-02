@@ -10,7 +10,7 @@ interface Options {
 }
 
 /**
- * 布局 Hook，用于 LayoutItem 和 Placeholder 组件
+ * 位置布局 Hook，用于 LayoutItem 和 Placeholder 组件
  * @param layoutRef 需要设置 DOM 布局结构的元素
  * @param options 配置项
  */
@@ -27,11 +27,10 @@ function useLayout(layoutRef: React.RefObject<HTMLElement> | null, options: Opti
     return clamp(layout.h, layout.minH ?? layout.h, layout.maxH ?? layout.h);
   }, [layout]);
 
-  React.useLayoutEffect(() => {
+  React.useEffect(() => {
     const layoutEl = layoutRef?.current;
-    console.log(layoutEl);
     if (!layoutEl || !layout || !rowHeight) return;
-    console.log('布局');
+    if (layout.moving) return; // 如果处于 moving 状态，不经过 layout 布局设置，此时元素应该是通过 draggable 或 resizeable 设置
     const uint = 100 / colCount;
     layoutEl.style.width = `${clampW * uint}%`;
     layoutEl.style.height = `${clampH * rowHeight}px`;

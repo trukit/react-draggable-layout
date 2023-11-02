@@ -69,7 +69,7 @@ export default class Draggable extends BaseEvent {
   }
 
   updateOptions(options: DraggableOptions) {
-    console.log('更新 options');
+    console.log('更新方法');
     this.options = {
       ...this.options,
       ...options,

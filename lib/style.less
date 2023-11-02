@@ -1,11 +1,11 @@
 .rdl-container {
   position: relative;
-  transition: left 0.3s ease-in-out, top 0.3s ease-in-out, width 0.3s ease-in-out, height 0.3s ease-in-out;
 
   .rdl-item {
     position: absolute;
     box-sizing: border-box;
     z-index: 0;
+    opacity: 1;
 
     &.rdl_animate.rdl_draggable__dragging,
     &.rdl_animate.rdl_resizable__resizing {
@@ -28,6 +28,10 @@
 
     &.rdl_resizable__resizing {
       will-change: width, height;
+    }
+
+    &.rdl_draggable__draggend {
+      opacity: 0;
     }
 
     .rdl-item-content {

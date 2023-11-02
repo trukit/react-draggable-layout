@@ -83,6 +83,10 @@ const LayoutContainer: React.FC<LayoutContainerProps> = ({
     if (!memoBreakPointKey || !layoutsState) return [];
     return layoutsState[memoBreakPointKey];
   }, [layoutsState, memoBreakPointKey]);
+  // TODO：调试用
+  React.useEffect(() => {
+    console.log('memoLayoutList', JSON.stringify(memoLayoutList));
+  }, [memoLayoutList]);
 
   const changeLayouts = React.useCallback(
     (layoutList: Layout[]) => {
@@ -122,44 +126,61 @@ const LayoutContainer: React.FC<LayoutContainerProps> = ({
   }, [gap, memoColWidth, rowHeight]);
 
   /** Placeholder Layout */
-  const [showPlaceholder, setShowPlaceholder] = React.useState<boolean>(false);
+  const [placeholderId, setPlaceholderID] = React.useState<string>('');
   const [placeholderLayout, setPlaceholderLayout] = React.useState<Layout>();
 
   // ======== Layout Draggable ============
   const handleDragStart = React.useCallback((curLayout: Layout) => {
     console.log('[Container] darg start', curLayout);
     setPlaceholderLayout({ ...curLayout });
-    setShowPlaceholder(true);
+    setPlaceholderID(curLayout.id);
   }, []);
 
   const handleDragMove = React.useCallback(
-    (curLayout: Layout, ui: DragUI) => {
-      console.log('[Container] darg move', curLayout, ui);
+    (curLayout: Layout) => {
+      // console.log('[Container] darg move', curLayout, ui);
       if (!enginRef.current) return;
       const engine = enginRef.current;
-      const newLayouts = engine.checkLayout(memoLayoutList, curLayout, curLayout.id, curLayout.id, 0);
-      const { compacted } = engine.compactLayout(newLayouts, curLayout);
-      const placeLayout = compacted.find((item) => item.id === curLayout.id);
+      let newLayoutsList = engine.checkLayout(memoLayoutList, curLayout, curLayout.id);
+      newLayoutsList = engine.compactLayout(newLayoutsList, curLayout);
+      const placeLayout = newLayoutsList.find((item) => item.id === curLayout.id);
       setPlaceholderLayout(placeLayout);
+      changeLayouts(newLayoutsList);
+      // console.log('改变 compacted ======', JSON.stringify(compacted));
     },
-    [memoLayoutList],
+    [changeLayouts, memoLayoutList],
   );
 
-  const handleDragEnd = React.useCallback((curLayout: Layout) => {
-    console.log('[Container] darg end', curLayout);
-    setPlaceholderLayout(undefined);
-    setShowPlaceholder(false);
-  }, []);
+  const handleDragEnd = React.useCallback(
+    (curLayout: Layout) => {
+      console.log('[Container] darg end', JSON.stringify(memoLayoutList));
+      if (!enginRef.current) return;
+      const engine = enginRef.current;
+      const newLayoutsList = engine.compactLayout(memoLayoutList, undefined);
+      const placeholder = newLayoutsList.find((item) => item.id === curLayout.id);
+      if (placeholder) placeholder.moving = false;
+      changeLayouts(newLayoutsList);
+      setPlaceholderLayout(undefined);
+      setPlaceholderID('');
+    },
+    [changeLayouts, memoLayoutList],
+  );
 
-  // ======== Update LayoutItem & LayoutEngine ============
+  // ========= 校验子组件是否符合规范 =============
+  React.useEffect(() => {
+    React.Children.toArray(children).forEach((child) => {
+      if (!React.isValidElement(child) || (child as React.ReactElement).type !== LayoutItem) {
+        throw new Error('[react-dragger-layout] The children of LayoutContainer can only be LayoutItem components.');
+      }
+    });
+  }, [children]);
+
+  // ======== 更新 LayoutItem 布局 ============
   React.useEffect(() => {
     const tempChildren: React.ReactElement<LayoutItemProps>[] = [];
     let rowCount = 0;
 
     React.Children.toArray(children).forEach((child) => {
-      if (!React.isValidElement(child) || (child as React.ReactElement).type !== LayoutItem) {
-        throw new Error('[react-dragger-layout] The children of LayoutContainer can only be LayoutItem components.');
-      }
       const curChildren = child as React.ReactElement<LayoutItemProps>;
       const { id } = curChildren.props;
       const ownerLayout = memoLayoutList.find((item: Layout) => item.id === id);
@@ -184,26 +205,9 @@ const LayoutContainer: React.FC<LayoutContainerProps> = ({
     });
 
     setClonedChildren(tempChildren);
-    console.log('rowCount', rowCount);
     // 设置 LayoutContainer 的高度
     if (containerRef.current) {
       containerRef.current.style.height = `${rowCount * memoRowHeight}px`;
-    }
-
-    if (enginRef.current) {
-      console.log('重新初始化LayoutEngine');
-      enginRef.current.initOptions({
-        cellWidth: memoColWidth,
-        cellHeight: memoRowHeight,
-        layoutList: memoLayoutList,
-      });
-    } else {
-      console.log('初始化LayoutEngine');
-      enginRef.current = new LayoutEngine({
-        cellWidth: memoColWidth,
-        cellHeight: memoRowHeight,
-        layoutList: memoLayoutList,
-      });
     }
   }, [
     children,
@@ -219,6 +223,23 @@ const LayoutContainer: React.FC<LayoutContainerProps> = ({
     memoColWidth,
   ]);
 
+  // =========== 更新 LayoutEngine 内部参数 ===============
+  React.useEffect(() => {
+    if (enginRef.current) {
+      console.log('重新初始化LayoutEngine');
+      enginRef.current.initOptions({
+        cellWidth: memoColWidth,
+        cellHeight: memoRowHeight,
+      });
+    } else {
+      console.log('初始化LayoutEngine');
+      enginRef.current = new LayoutEngine({
+        cellWidth: memoColWidth,
+        cellHeight: memoRowHeight,
+      });
+    }
+  }, [memoColWidth, memoRowHeight]);
+
   // ========= TODO: 调试用，记得删除 ===========
   // React.useLayoutEffect(() => {
   //   console.group(`LayoutContainer - ${size?.width}`);
@@ -228,14 +249,14 @@ const LayoutContainer: React.FC<LayoutContainerProps> = ({
   //   console.groupEnd();
   // }, [memoBreakPointKey, memoColCount, memoRowHeight, size]);
 
-  console.log('container refresh =======');
+  // console.log('container refresh =======');
 
   return (
     <>
-      <div ref={containerRef} className={cls('rdl-container', className)}>
+      <div ref={containerRef} className={cls('rdl-container', 'rdl_animate', className)}>
         {clonedChildren}
         <Placeholder
-          active={showPlaceholder}
+          active={!!placeholderId}
           layout={placeholderLayout}
           colCount={memoColCount}
           rowHeight={memoRowHeight}

@@ -3,7 +3,6 @@ import { DragUI, Layout } from '../../types';
 import useLayout from '../../hooks/useLayout';
 import Draggable from '../../core/Draggable';
 import { cls } from '../../utils/tool';
-import useRefFunction from '../../hooks/useRefFunction';
 import LayoutEngine from '../../core/LayoutEngine';
 
 export interface LayoutItemProps {
@@ -18,7 +17,7 @@ export interface LayoutItemProps {
   draggableHandle?: string;
   // 拖拽相关事件
   onLayoutDragStart?: (currentLayout: Layout) => void;
-  onLayoutDragMove?: (currentLayout: Layout, ui: DragUI) => void;
+  onLayoutDragMove?: (currentLayout: Layout) => void;
   onLayoutDragEnd?: (currentLayout: Layout) => void;
 }
 
@@ -42,10 +41,11 @@ const LayoutItem: React.FC<LayoutItemProps> = ({
   const draggableRef = React.useRef<Draggable>();
 
   const [isDragging, setIsDragging] = React.useState<boolean>(false);
+  const [isDraggend, setIsDraggend] = React.useState<boolean>(false);
 
-  console.group(id);
-  console.log('layout', layout);
-  console.groupEnd();
+  // console.group(id);
+  // console.log('layout', layout);
+  // console.groupEnd();
 
   // 布局
   useLayout(itemRef, {
@@ -55,6 +55,7 @@ const LayoutItem: React.FC<LayoutItemProps> = ({
     gap,
   });
 
+  /** 计算拖拽时，其改变后的布局块数据 */
   const calcLayoutXY = React.useCallback(
     (offsetX: number, offsetY: number): [number, number] | undefined => {
       if (!colWidth || !rowHeight || !layout) return;
@@ -66,7 +67,7 @@ const LayoutItem: React.FC<LayoutItemProps> = ({
   );
 
   // ======== Layout Draggable ============
-  const handleDragStart = useRefFunction(() => {
+  const handleDragStart = React.useCallback(() => {
     // console.log('==== onDragStart');
     setIsDragging(true);
     if (layout && onLayoutDragStart) {
@@ -75,9 +76,8 @@ const LayoutItem: React.FC<LayoutItemProps> = ({
     }
   }, [layout, onLayoutDragStart]);
 
-  const handleDragMove = useRefFunction(
+  const handleDragMove = React.useCallback(
     (dragUI: DragUI) => {
-      console.log(' ========== onLayoutDragMove,,,,,,', onLayoutDragMove);
       if (!dragUI.position) return;
       const { left, top } = dragUI.position;
       if (layout && onLayoutDragMove) {
@@ -87,18 +87,22 @@ const LayoutItem: React.FC<LayoutItemProps> = ({
           newLayout.x = calcXY[0];
           newLayout.y = calcXY[1];
         }
-        onLayoutDragMove(newLayout, dragUI);
+        onLayoutDragMove(newLayout);
       }
     },
     [calcLayoutXY, layout, onLayoutDragMove],
   );
 
-  const handleDragEnd = useRefFunction(() => {
+  const handleDragEnd = React.useCallback(() => {
     setIsDragging(false);
+    setIsDraggend(true);
     if (layout && onLayoutDragEnd) {
       const newLayout = { ...layout };
       onLayoutDragEnd(newLayout);
     }
+    setTimeout(() => {
+      setIsDraggend(false);
+    }, 0);
   }, [layout, onLayoutDragEnd]);
 
   // 注册拖拽移动事件
@@ -113,8 +117,8 @@ const LayoutItem: React.FC<LayoutItemProps> = ({
         onDrag: handleDragMove,
         onStop: handleDragEnd,
       });
-    } else if (draggableRef.current) {
-      draggableRef.current.updateOptions({
+    } else {
+      draggableRef.current?.updateOptions({
         onStart: handleDragStart,
         onDrag: handleDragMove,
         onStop: handleDragEnd,
@@ -122,8 +126,23 @@ const LayoutItem: React.FC<LayoutItemProps> = ({
     }
   }, [draggableHandle, handleDragEnd, handleDragMove, handleDragStart]);
 
+  // TODO: 测试代码，记得删除
+  React.useEffect(() => {
+    if (layout?.id === 'item2') {
+      console.log(`========== ${Date.now()}`);
+      console.warn(JSON.stringify(layout));
+    }
+  }, [layout]);
+
   return (
-    <div ref={itemRef} className={cls('rdl-item', { rdl_draggable__dragging: isDragging })} key={id}>
+    <div
+      ref={itemRef}
+      className={cls('rdl-item', 'rdl_animate', {
+        rdl_draggable__dragging: isDragging,
+        rdl_draggable__draggend: isDraggend,
+      })}
+      key={id}
+    >
       <div className={cls('rdl-item-content', className)}>{children}</div>
     </div>
   );

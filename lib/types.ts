@@ -26,8 +26,10 @@ export interface Layout extends LayoutPosition {
   /** 布局组件，最大网格单位高度 */
   maxH?: number;
   /**
-   * 由 DragEvents (onDragStart, onDrag, onDragStop) 事件和 ResizeEvents (onResizeStart, onResize, onResizeStop) 事件触发后，改变其值
+   * 是否正在移动，由 drag 或 resize 触发
    */
+  moving?: boolean;
+  /** 是否移动过 */
   moved?: boolean;
   /**
    * 为 true，表示其 isDraggable: false` 和 `isResizable: false`，即不能拖拽和手动设置大小。
