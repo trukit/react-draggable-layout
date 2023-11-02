@@ -1,6 +1,6 @@
 import * as React from 'react';
 import LayoutItem, { LayoutItemProps } from '../LayoutItem';
-import { BreakPoints, Cols, DragUI, Layout, Layouts } from '../../types';
+import type { BreakPoints, Cols, Layout, Layouts } from '../../types';
 import useSize from '../../hooks/useSize';
 import { cls, getKeyByValue } from '../../utils/tool';
 import Placeholder from '../Placeholder';
@@ -157,8 +157,6 @@ const LayoutContainer: React.FC<LayoutContainerProps> = ({
       if (!enginRef.current) return;
       const engine = enginRef.current;
       const newLayoutsList = engine.compactLayout(memoLayoutList, undefined);
-      const placeholder = newLayoutsList.find((item) => item.id === curLayout.id);
-      if (placeholder) placeholder.moving = false;
       changeLayouts(newLayoutsList);
       setPlaceholderLayout(undefined);
       setPlaceholderID('');

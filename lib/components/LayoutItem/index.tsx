@@ -68,7 +68,6 @@ const LayoutItem: React.FC<LayoutItemProps> = ({
 
   // ======== Layout Draggable ============
   const handleDragStart = React.useCallback(() => {
-    // console.log('==== onDragStart');
     setIsDragging(true);
     if (layout && onLayoutDragStart) {
       const newLayout = { ...layout };
@@ -107,6 +106,7 @@ const LayoutItem: React.FC<LayoutItemProps> = ({
 
   // 注册拖拽移动事件
   React.useEffect(() => {
+    if (layout?.static || layout?.isDraggable === false) return;
     if (!draggableHandle || !itemRef.current) return;
     draggableElRef.current = itemRef.current.querySelector(draggableHandle);
 
@@ -124,7 +124,7 @@ const LayoutItem: React.FC<LayoutItemProps> = ({
         onStop: handleDragEnd,
       });
     }
-  }, [draggableHandle, handleDragEnd, handleDragMove, handleDragStart]);
+  }, [draggableHandle, handleDragEnd, handleDragMove, handleDragStart, layout]);
 
   // TODO: 测试代码，记得删除
   React.useEffect(() => {

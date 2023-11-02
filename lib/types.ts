@@ -45,10 +45,6 @@ export interface Layout extends LayoutPosition {
   isResizable?: boolean;
 }
 
-export interface LayoutMap {
-  [key: string]: Layout;
-}
-
 export type Cols = Record<keyof BreakPoints, number>;
 
 export type Layouts = Record<keyof BreakPoints, Layout[]>;

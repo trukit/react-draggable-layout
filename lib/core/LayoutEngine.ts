@@ -1,10 +1,9 @@
-import { Layout, LayoutMap } from '../types';
+import type { Layout } from '../types';
 
 interface LayoutEngineOptions {
   cellWidth?: number;
   cellHeight?: number;
   float?: boolean;
-  onChange?: (layoutList: Layout[]) => void;
 }
 
 export default class LayoutEngine {
@@ -12,15 +11,18 @@ export default class LayoutEngine {
   public cellHeight: number = 0;
   public layouts: Layout[] = [];
 
-  protected onChange?: (layoutList: Layout[]) => void;
-
-  protected _checklayoutCaches?: Layout;
-  protected _compactLayoutCaches?: Layout;
-
   constructor(opts: LayoutEngineOptions) {
     this.initOptions(opts);
   }
 
+  /**
+   * 检查布局块是否在容器内，返回符合要求的布局块坐标数组
+   * @param x 布局块的x坐标
+   * @param y 布局块的y坐标
+   * @param col 容器的总列数
+   * @param w 布局块的宽度
+   * @returns
+   */
   public static checkInContainer(x: number, y: number, col: number, w: number): [number, number] {
     if (x + w > col - 1) x = col - w;
     if (x <= 0) x = 0;
@@ -28,13 +30,15 @@ export default class LayoutEngine {
     return [x, y];
   }
 
-  public static sortLayoutList(layoutList: Layout[], dir: 1 | -1 = 1, colCount?: number): Layout[] {
+  /**
+   * 将布局数组根据位置进行排序
+   * @param layoutList 布局数组
+   * @param colCount 容器列数
+   * @returns
+   */
+  public static sortLayoutList(layoutList: Layout[], colCount?: number): Layout[] {
     const col = colCount || layoutList.reduce((col, n) => Math.max(n.x + n.w, col), 0) || 12;
-    if (dir === -1) {
-      return layoutList.sort((a, b) => (b.x ?? 1000) + (b.y ?? 1000) * col - ((a.x ?? 1000) + (a.y ?? 1000) * col));
-    } else {
-      return layoutList.sort((b, a) => (b.x ?? 1000) + (b.y ?? 1000) * col - ((a.x ?? 1000) + (a.y ?? 1000) * col));
-    }
+    return layoutList.sort((b, a) => (b.x ?? 1000) + (b.y ?? 1000) * col - ((a.x ?? 1000) + (a.y ?? 1000) * col));
   }
 
   /**
@@ -44,13 +48,85 @@ export default class LayoutEngine {
   public initOptions(opts: LayoutEngineOptions) {
     this.cellHeight = opts.cellHeight ?? this.cellHeight;
     this.cellWidth = opts.cellWidth ?? this.cellWidth;
-    this.onChange = opts.onChange ?? this.onChange;
+  }
+
+  /**
+   * 检查当前的布局数组，避免出现重叠块，返回解决重叠情况后的布局数组
+   * @param layouts 初始布局数组
+   * @param curLayout 当前检查的块
+   * @param movingId 当前移动的布局块id
+   * @param dir 移动方向，-1 向上，1 向下，默认向下
+   * @returns
+   */
+  public checkLayout(layouts: Layout[], curLayout: Layout, movingId?: string): Layout[] {
+    // TODO: 看下怎么做缓存优化
+    const movedItems: Layout[] = []; // 需要被移动的布局块
+    let newLayouts = layouts.map((item) => {
+      if (item.id !== curLayout.id) {
+        if (item.static) {
+          // 静态块不动
+          return item;
+        }
+        if (this._isCollision(item, curLayout)) {
+          let offsetY = item.y + 1; // 当和检查的块碰撞时，向下移一个位置
+          if (curLayout.y > item.y && curLayout.y < item.y + item.h) {
+            offsetY = item.y;
+          }
+          const newItem: Layout = { ...item, y: offsetY, moved: true };
+          movedItems.push(newItem);
+          return newItem;
+        }
+      } else if (movingId === curLayout.id) {
+        // 当前正在移动的块，标记 moving = true，以便不通过 useLayout 渲染
+        return { ...curLayout, moving: true };
+      }
+      return item;
+    });
+    const { length } = movedItems;
+    for (let i = 0; i < length; i++) {
+      newLayouts = this.checkLayout(newLayouts, movedItems[i], movingId);
+    }
+    return newLayouts;
+  }
+
+  /**
+   * 压缩当前布局数组，并返回压缩后的正常布局数组，使布局块都紧挨
+   * @param layouts 布局数组
+   * @param movingItem 正在拖拽或重置大小的布局块
+   * @returns
+   */
+  public compactLayout(layouts: Layout[], movingItem?: Layout): Layout[] {
+    // TODO: 看下怎么做缓存优化
+    const sorted = LayoutEngine.sortLayoutList(layouts);
+    console.log('排序之后，数组', JSON.stringify(sorted));
+    const compactList = Array(layouts.length);
+    const compareList: Layout[] = [];
+    for (let i = 0; i < sorted.length; i++) {
+      const finished = this._compactItem(compareList, sorted[i]);
+      if (movingItem) {
+        if (movingItem.id === finished.id) {
+          movingItem.x = finished.x;
+          movingItem.y = finished.y;
+          finished.moved = true;
+        } else finished.moved = false;
+      } else {
+        finished.moving = false;
+        finished.moved = false;
+      }
+      compareList.push(finished);
+      compactList[i] = finished;
+    }
+    console.group('compactList');
+    console.log(JSON.stringify(compactList));
+    console.groupEnd();
+    return compactList;
   }
 
   /**
    * 判断两个布局块是否碰撞
    */
   protected _isCollision(a: Layout, b: Layout): boolean {
+    if (a.id === b.id) return false;
     return !(a.y >= b.y + b.h || a.y + a.h <= b.y || a.x + a.w <= b.x || a.x >= b.x + b.w);
   }
 
@@ -62,56 +138,6 @@ export default class LayoutEngine {
       }
     }
     return null;
-  }
-
-  /**
-   * 检查当前的布局数组，避免出现重叠块，返回解决重叠情况后的布局数组
-   * @param layouts 初始布局数组
-   * @param curLayout 当前检查的块
-   * @param movingId 当前移动的布局块id
-   * @param dir 移动方向，-1 向上，1 向下，默认向下
-   * @returns
-   */
-  public checkLayout(layouts: Layout[], curLayout: Layout, movingId?: string, dir: 1 | -1 = 1): Layout[] {
-    // if (
-    //   this._checklayoutCaches &&
-    //   this._checklayoutCaches.x === curLayout.x &&
-    //   this._checklayoutCaches.y === curLayout.y &&
-    //   this._checklayoutCaches.w === curLayout.w &&
-    //   this._checklayoutCaches.h === curLayout.h &&
-    //   this._checklayoutCaches.moving === curLayout.moving
-    // ) {
-    //   return layouts;
-    // }
-    // this._checklayoutCaches = { ...curLayout };
-    const movedItems: Layout[] = []; // 需要被移动的布局块
-    let newLayouts = layouts.map((item) => {
-      if (item.id !== curLayout.id) {
-        if (item.static) {
-          // 静态块不动
-          return item;
-        }
-        if (this._isCollision(item, curLayout)) {
-          let offsetY = item.y + 1;
-          /** 这一行也非常关键，当向上移动的时候，碰撞的元素必须固定 */
-          // if (moving < 0 && curLayout.y > 0) offsetY = item.y
-          if (curLayout.y > item.y && curLayout.y < item.y + item.h) {
-            offsetY = item.y;
-          }
-          const newItem: Layout = { ...item, y: offsetY, moved: true };
-          movedItems.push(newItem);
-          return newItem;
-        }
-      } else if (movingId === curLayout.id) {
-        return { ...item, ...curLayout, moving: true };
-      }
-      return item;
-    });
-    const { length } = movedItems;
-    for (let i = 0; i < length; i++) {
-      newLayouts = this.checkLayout(newLayouts, movedItems[i], movingId);
-    }
-    return newLayouts;
   }
 
   /**
@@ -132,52 +158,8 @@ export default class LayoutEngine {
         newItem.y = firstCollison.y + firstCollison.h;
         return newItem;
       }
-      newItem.y--;
-      if (newItem.y < 0) return { ...newItem, y: 0 };
+      newItem.y > 0 && newItem.y--;
+      if (newItem.y === 0) return newItem;
     }
-  }
-
-  /**
-   * 压缩当前布局数组，并返回压缩后的正常布局数组，使布局块都紧挨
-   * @param layouts 布局数组
-   * @param movingItem 正在移动的项
-   * @returns
-   */
-  public compactLayout(layouts: Layout[], movingItem?: Layout): Layout[] {
-    // if (movingItem) {
-    //   if (
-    //     this._compactLayoutCaches &&
-    //     this._compactLayoutCaches.x === movingItem.x &&
-    //     this._compactLayoutCaches.y === movingItem.y &&
-    //     this._compactLayoutCaches.w === movingItem.w &&
-    //     this._compactLayoutCaches.h === movingItem.h &&
-    //     this._compactLayoutCaches.id === movingItem.id &&
-    //     this._compactLayoutCaches.moving === movingItem.moving
-    //   ) {
-    //     return layouts;
-    //   }
-    //   this._compactLayoutCaches = movingItem;
-    // }
-    const sorted = LayoutEngine.sortLayoutList(layouts);
-    const needCompactList = Array(layouts.length);
-    const compareList: Layout[] = [];
-    for (let i = 0; i < sorted.length; i++) {
-      const finished = this._compactItem(compareList, sorted[i]);
-      if (movingItem) {
-        if (movingItem.id === finished.id) {
-          movingItem.x = finished.x;
-          movingItem.y = finished.y;
-          finished.moved = true;
-        } else finished.moved = false;
-      } else {
-        finished.moved = false;
-      }
-      compareList.push(finished);
-      needCompactList[i] = finished;
-    }
-    console.group('needCompactList');
-    console.log(JSON.stringify(needCompactList));
-    console.groupEnd();
-    return needCompactList;
   }
 }

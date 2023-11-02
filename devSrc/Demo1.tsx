@@ -9,7 +9,7 @@ const LayoutWrapper = styled(LayoutContainer)`
     height: 100%;
     box-sizing: border-box;
     background-color: #fff;
-    > div:nth-child(2) {
+    > div:not(.draggable) {
       width: 100%;
       height: 100%;
       display: flex;
@@ -41,7 +41,7 @@ const REACT_GRID_LAYOUT_BEDROCK: Layouts = {
     { id: 'item3', x: 4, y: 0, w: 2, h: 2 },
     { id: 'item4', x: 6, y: 0, w: 2, h: 2 },
     { id: 'item5', x: 0, y: 2, w: 4, h: 2 },
-    { id: 'item6', x: 4, y: 2, w: 4, h: 2 },
+    { id: 'item6', x: 4, y: 2, w: 4, h: 2, static: true },
   ],
 };
 
@@ -82,8 +82,7 @@ function Demo1() {
             <div>item5</div>
           </LayoutItem>
           <LayoutItem className="box" id="item6">
-            <div className="draggable" />
-            <div>item6</div>
+            <div>item6 [static]</div>
           </LayoutItem>
         </LayoutWrapper>
       </div>
