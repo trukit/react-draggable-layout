@@ -85,9 +85,9 @@ const LayoutContainer: React.FC<LayoutContainerProps> = ({
     return layoutsState[memoBreakPointKey];
   }, [layoutsState, memoBreakPointKey]);
   // TODO：调试用
-  React.useEffect(() => {
-    console.log('memoLayoutList', JSON.stringify(memoLayoutList));
-  }, [memoLayoutList]);
+  // React.useEffect(() => {
+  //   console.log('memoLayoutList', JSON.stringify(memoLayoutList));
+  // }, [memoLayoutList]);
 
   const changeLayouts = React.useCallback(
     (layoutList: Layout[]) => {
@@ -132,7 +132,7 @@ const LayoutContainer: React.FC<LayoutContainerProps> = ({
 
   // ======== Layout Draggable ============
   const handleDragStart = React.useCallback((curLayout: Layout) => {
-    console.log('[Container] darg start', curLayout);
+    // console.log('[Container] darg start', curLayout);
     curLayout.moving = true;
     setPlaceholderLayout({ ...curLayout });
     setPlaceholderID(curLayout.id);
@@ -140,7 +140,7 @@ const LayoutContainer: React.FC<LayoutContainerProps> = ({
 
   const handleDragMove = React.useCallback(
     (curLayout: Layout, x: number, y: number) => {
-      console.log('[Container] darg move', curLayout, x, y);
+      // console.log('[Container] darg move', curLayout, x, y);
       if (!enginRef.current) return;
       const engine = enginRef.current;
       const isUserAction = true;
@@ -166,7 +166,7 @@ const LayoutContainer: React.FC<LayoutContainerProps> = ({
 
   const handleDragEnd = React.useCallback(
     (curLayout: Layout) => {
-      console.log('[Container] darg end', JSON.stringify(memoLayoutList));
+      // console.log('[Container] darg end', JSON.stringify(memoLayoutList));
       if (!enginRef.current) return;
       const engine = enginRef.current;
       curLayout.moving = false;

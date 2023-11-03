@@ -2,6 +2,7 @@ import { addStyles } from '../utils/dom';
 import { Manager } from './manager';
 import { BaseEvent } from './BaseEvent';
 import { DragUI } from '../types';
+import { updateScroll } from '../utils/tool';
 
 interface DraggableOptions {
   /** name of the css class that triggers the drag */
@@ -135,7 +136,11 @@ export default class Draggable extends BaseEvent {
 
   protected _callDrag(e: MouseEvent) {
     if (!this.dragging) return;
-    this.options.onDrag?.(this.ui());
+    const ui = this.ui();
+    if (ui.position) {
+      updateScroll(this.el, ui.position.top);
+    }
+    this.options.onDrag?.(ui);
     this.trigger('drag', e);
   }
 
