@@ -59,7 +59,7 @@ function Demo1() {
           draggableHandle=".draggable"
           layouts={REACT_GRID_LAYOUT_BEDROCK}
           gap={[8, 8]}
-          isBounded
+          compactType="horizontal"
         >
           <LayoutItem className="box" id="item1">
             <div className="draggable" />

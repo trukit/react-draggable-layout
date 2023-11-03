@@ -1,5 +1,5 @@
 import { addStyles } from '../utils/dom';
-import { Manager } from './manager';
+import { Manager } from './manager1';
 import { BaseEvent } from './BaseEvent';
 import { DragUI } from '../types';
 import { updateScroll } from '../utils/tool';
@@ -150,7 +150,7 @@ export default class Draggable extends BaseEvent {
     if (this.dragging) {
       this._dragFollow(e);
       this._callDrag(e);
-      // TODO: 可以做延时优化
+      // TODO: 目前来看，Chrome 性能ok，后续考虑是否做节流优化
     } else if (Math.abs(e.x - s.x) + Math.abs(e.y - s.y) > 3) {
       this.dragging = true;
       Manager.dragElement = this;
