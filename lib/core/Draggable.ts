@@ -1,5 +1,5 @@
 import { addStyles } from '../utils/dom';
-import { Manager } from './manager1';
+import { Manager } from './Manager';
 import { BaseEvent } from './BaseEvent';
 import { DragUI } from '../types';
 import { updateScroll } from '../utils/tool';
