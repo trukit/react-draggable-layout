@@ -17,7 +17,7 @@ export interface LayoutItemProps {
   draggableHandle?: string;
   // 拖拽相关事件
   onLayoutDragStart?: (currentLayout: Layout) => void;
-  onLayoutDragMove?: (currentLayout: Layout) => void;
+  onLayoutDragMove?: (currentLayout: Layout, x: number, y: number) => void;
   onLayoutDragEnd?: (currentLayout: Layout) => void;
 }
 
@@ -70,8 +70,7 @@ const LayoutItem: React.FC<LayoutItemProps> = ({
   const handleDragStart = React.useCallback(() => {
     setIsDragging(true);
     if (layout && onLayoutDragStart) {
-      const newLayout = { ...layout };
-      onLayoutDragStart(newLayout);
+      onLayoutDragStart(layout);
     }
   }, [layout, onLayoutDragStart]);
 
@@ -80,13 +79,10 @@ const LayoutItem: React.FC<LayoutItemProps> = ({
       if (!dragUI.position) return;
       const { left, top } = dragUI.position;
       if (layout && onLayoutDragMove) {
-        const newLayout = { ...layout };
         const calcXY = calcLayoutXY(left, top);
         if (calcXY) {
-          newLayout.x = calcXY[0];
-          newLayout.y = calcXY[1];
+          onLayoutDragMove(layout, calcXY[0], calcXY[1]);
         }
-        onLayoutDragMove(newLayout);
       }
     },
     [calcLayoutXY, layout, onLayoutDragMove],
@@ -96,8 +92,7 @@ const LayoutItem: React.FC<LayoutItemProps> = ({
     setIsDragging(false);
     setIsDraggend(true);
     if (layout && onLayoutDragEnd) {
-      const newLayout = { ...layout };
-      onLayoutDragEnd(newLayout);
+      onLayoutDragEnd(layout);
     }
     setTimeout(() => {
       setIsDraggend(false);

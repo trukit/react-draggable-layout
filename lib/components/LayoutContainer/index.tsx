@@ -1,6 +1,6 @@
 import * as React from 'react';
 import LayoutItem, { LayoutItemProps } from '../LayoutItem';
-import type { BreakPoints, Cols, Layout, Layouts } from '../../types';
+import type { BreakPoints, Cols, Layout, Layouts, CompactType } from '../../types';
 import useSize from '../../hooks/useSize';
 import { cls, getKeyByValue } from '../../utils/tool';
 import Placeholder from '../Placeholder';
@@ -23,8 +23,8 @@ export interface LayoutContainerProps {
   onLayoutChange?: (currentLayout: Layout[], allLayouts: Layouts) => void;
   /** 固定每一行的高度，未设置则等于单位列的宽度值 */
   rowHeight?: number;
-  /** 如果为真，则只能在网格范围内拖拽 */
-  isBounded?: boolean;
+  /** 压缩方向 */
+  compactType?: CompactType;
   children: React.ReactNode;
   className?: string;
 }
@@ -38,6 +38,7 @@ const LayoutContainer: React.FC<LayoutContainerProps> = ({
   cols,
   rowHeight,
   draggableHandle,
+  compactType = null,
 }) => {
   const containerRef = React.useRef<HTMLDivElement>(null);
   const enginRef = React.useRef<LayoutEngine>();
@@ -132,23 +133,35 @@ const LayoutContainer: React.FC<LayoutContainerProps> = ({
   // ======== Layout Draggable ============
   const handleDragStart = React.useCallback((curLayout: Layout) => {
     console.log('[Container] darg start', curLayout);
+    curLayout.moving = true;
     setPlaceholderLayout({ ...curLayout });
     setPlaceholderID(curLayout.id);
   }, []);
 
   const handleDragMove = React.useCallback(
-    (curLayout: Layout) => {
-      // console.log('[Container] darg move', curLayout, ui);
+    (curLayout: Layout, x: number, y: number) => {
+      console.log('[Container] darg move', curLayout, x, y);
       if (!enginRef.current) return;
       const engine = enginRef.current;
-      let newLayoutsList = engine.checkLayout(memoLayoutList, curLayout, curLayout.id);
-      newLayoutsList = engine.compactLayout(newLayoutsList, curLayout);
-      const placeLayout = newLayoutsList.find((item) => item.id === curLayout.id);
+      const isUserAction = true;
+      const preventCollision = true;
+      let newLayoutList = engine.moveElement(
+        memoLayoutList,
+        curLayout,
+        compactType,
+        x,
+        y,
+        isUserAction,
+        preventCollision,
+        memoColCount,
+        false,
+      );
+      newLayoutList = engine.compactLayout(newLayoutList, memoColCount, compactType);
+      const placeLayout = newLayoutList.find((item) => item.id === curLayout.id);
       setPlaceholderLayout(placeLayout);
-      changeLayouts(newLayoutsList);
-      // console.log('改变 compacted ======', JSON.stringify(compacted));
+      changeLayouts(newLayoutList);
     },
-    [changeLayouts, memoLayoutList],
+    [changeLayouts, compactType, memoColCount, memoLayoutList],
   );
 
   const handleDragEnd = React.useCallback(
@@ -156,12 +169,14 @@ const LayoutContainer: React.FC<LayoutContainerProps> = ({
       console.log('[Container] darg end', JSON.stringify(memoLayoutList));
       if (!enginRef.current) return;
       const engine = enginRef.current;
-      const newLayoutsList = engine.compactLayout(memoLayoutList, undefined);
-      changeLayouts(newLayoutsList);
+      curLayout.moving = false;
+      let newLayoutList = LayoutEngine.cloneLayoutList(memoLayoutList);
+      newLayoutList = engine.compactLayout(memoLayoutList, memoColCount, compactType);
+      changeLayouts(newLayoutList);
       setPlaceholderLayout(undefined);
       setPlaceholderID('');
     },
-    [changeLayouts, memoLayoutList],
+    [changeLayouts, compactType, memoColCount, memoLayoutList],
   );
 
   // ========= 校验子组件是否符合规范 =============
@@ -221,20 +236,10 @@ const LayoutContainer: React.FC<LayoutContainerProps> = ({
     memoColWidth,
   ]);
 
-  // =========== 更新 LayoutEngine 内部参数 ===============
+  // =========== 初始化 LayoutEngine ===============
   React.useEffect(() => {
-    if (enginRef.current) {
-      console.log('重新初始化LayoutEngine');
-      enginRef.current.initOptions({
-        cellWidth: memoColWidth,
-        cellHeight: memoRowHeight,
-      });
-    } else {
-      console.log('初始化LayoutEngine');
-      enginRef.current = new LayoutEngine({
-        cellWidth: memoColWidth,
-        cellHeight: memoRowHeight,
-      });
+    if (!enginRef.current) {
+      enginRef.current = new LayoutEngine();
     }
   }, [memoColWidth, memoRowHeight]);
 

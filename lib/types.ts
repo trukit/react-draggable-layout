@@ -64,3 +64,5 @@ export interface DragUI {
   size?: Size;
   draggable?: HTMLElement;
 }
+
+export type CompactType = 'horizontal' | 'vertical' | null;
