@@ -1,18 +1,18 @@
 import * as React from 'react';
 import LayoutItem, { LayoutItemProps } from '../LayoutItem';
-import type { BreakPoints, Cols, Layout, Layouts, CompactType } from '../../types';
+import type { Layout, CompactType } from '../../types';
 import useSize from '../../hooks/useSize';
-import { cls, getKeyByValue } from '../../utils/tool';
+import { cls } from '../../utils/tool';
 import Placeholder from '../Placeholder';
 import LayoutEngine from '../../core/LayoutEngine';
 
 export interface LayoutContainerProps {
   /** 页面适配，例如： { lg: 1920, md: 1680, sm: 1440, xs: 1280 } */
-  breakpoints?: BreakPoints;
+  // breakpoints?: BreakPoints;
   /** 页面需要分成多少列，可以为数字，表示无论何种尺寸都分为这么多列，可以为 breakpoints 类型例如 { lg: 22, md: 20, sm: 18, xs: 14 } */
-  cols?: number | Cols;
+  col: number;
   /** 布局 */
-  layouts?: Layouts;
+  layouts: Layout[];
   /** 触发拖拽的元素 css 类名，默认为整个 item */
   draggableHandle?: string;
   /** 拖动改变大小时的对象 */
@@ -20,7 +20,7 @@ export interface LayoutContainerProps {
   /** item 相邻距离，x 轴与 y 轴 */
   gap?: [number, number];
   /** 当布局切换时触发 */
-  onLayoutChange?: (currentLayout: Layout[], allLayouts: Layouts) => void;
+  onLayoutChange?: (layoutList: Layout[]) => void;
   /** 固定每一行的高度，未设置则等于单位列的宽度值 */
   rowHeight?: number;
   /** 压缩方向 */
@@ -30,12 +30,11 @@ export interface LayoutContainerProps {
 }
 
 const LayoutContainer: React.FC<LayoutContainerProps> = ({
-  breakpoints,
   layouts,
   children,
   className,
   gap,
-  cols,
+  col,
   rowHeight,
   draggableHandle,
   compactType = null,
@@ -60,65 +59,61 @@ const LayoutContainer: React.FC<LayoutContainerProps> = ({
   }, [gap]);
 
   const size = useSize(containerRef);
-  const [layoutsState, setLayoutsState] = React.useState<Layouts | undefined>(layouts);
+  const [layoutList, setLayoutList] = React.useState<Layout[]>(layouts);
 
   /** 当前页面宽度所触发的布局 */
-  const memoBreakPointKey = React.useMemo<string>(() => {
-    if (!breakpoints || !size) return '';
-    const breakList = Object.values(breakpoints)
-      .filter((n) => n > 0)
-      .sort((a, b) => b - a);
-    const { width } = size;
-    let curBreakPoint = breakList[breakList.length - 1];
-    for (const num of breakList) {
-      if (width >= num) {
-        curBreakPoint = num;
-        break;
-      }
-    }
-    const key = getKeyByValue<BreakPoints, string>(breakpoints, curBreakPoint);
-    return key || '';
-  }, [breakpoints, size]);
+  // const memoBreakPointKey = React.useMemo<string>(() => {
+  //   if (!breakpoints || !size) return '';
+  //   const breakList = Object.values(breakpoints)
+  //     .filter((n) => n > 0)
+  //     .sort((a, b) => b - a);
+  //   const { width } = size;
+  //   let curBreakPoint = breakList[breakList.length - 1];
+  //   for (const num of breakList) {
+  //     if (width >= num) {
+  //       curBreakPoint = num;
+  //       break;
+  //     }
+  //   }
+  //   const key = getKeyByValue<BreakPoints, string>(breakpoints, curBreakPoint);
+  //   return key || '';
+  // }, [breakpoints, size]);
 
-  const memoLayoutList = React.useMemo<Layout[]>(() => {
-    if (!memoBreakPointKey || !layoutsState) return [];
-    return layoutsState[memoBreakPointKey];
-  }, [layoutsState, memoBreakPointKey]);
+  // const memoLayoutList = React.useMemo<Layout[]>(() => {
+  //   if (!memoBreakPointKey || !layoutsState) return [];
+  //   return layoutsState[memoBreakPointKey];
+  // }, [layoutsState, memoBreakPointKey]);
   // TODO：调试用
   // React.useEffect(() => {
   //   console.log('memoLayoutList', JSON.stringify(memoLayoutList));
   // }, [memoLayoutList]);
 
-  const changeLayouts = React.useCallback(
-    (layoutList: Layout[]) => {
-      const newLayouts = JSON.parse(JSON.stringify(layoutsState));
-      newLayouts[memoBreakPointKey] = layoutList;
-      setLayoutsState(newLayouts);
-    },
-    [layoutsState, memoBreakPointKey],
-  );
+  const changeLayouts = React.useCallback((layoutList: Layout[]) => {
+    const newLayouts = JSON.parse(JSON.stringify(layoutList));
+    setLayoutList(newLayouts);
+  }, []);
 
   /**
    * 获取当前页面一行的列数
    */
-  const memoColCount = React.useMemo<number>(() => {
-    let count;
-    if (cols) {
-      typeof cols === 'number' && (count = cols);
-      if (typeof cols === 'object') {
-        count = cols[memoBreakPointKey];
-      }
-    }
-    return count ?? 12;
-  }, [cols, memoBreakPointKey]);
+  // const memoColCount = React.useMemo<number>(() => {
+  //   let count;
+  //   if (cols) {
+  //     typeof cols === 'number' && (count = cols);
+  //     if (typeof cols === 'object') {
+  //       count = cols[memoBreakPointKey];
+  //     }
+  //   }
+  //   return count ?? 12;
+  // }, [cols, memoBreakPointKey]);
 
   /** 每一列的像素宽度 */
   const memoColWidth = React.useMemo<number>(() => {
     if (!size) return 0;
     const container = containerRef.current;
     if (!container) return 0;
-    return size.width / memoColCount;
-  }, [memoColCount, size]);
+    return size.width / col;
+  }, [col, size]);
 
   /** 获取每一行的高度 */
   const memoRowHeight = React.useMemo<number>(() => {
@@ -133,7 +128,7 @@ const LayoutContainer: React.FC<LayoutContainerProps> = ({
   // ======== Layout Draggable ============
   const handleDragStart = React.useCallback((curLayout: Layout) => {
     // console.log('[Container] darg start', curLayout);
-    curLayout.moving = true;
+    curLayout.placeholder = true;
     setPlaceholderLayout({ ...curLayout });
     setPlaceholderID(curLayout.id);
   }, []);
@@ -146,22 +141,22 @@ const LayoutContainer: React.FC<LayoutContainerProps> = ({
       const isUserAction = true;
       const preventCollision = true;
       let newLayoutList = engine.moveElement(
-        memoLayoutList,
+        layoutList,
         curLayout,
         compactType,
         x,
         y,
         isUserAction,
         preventCollision,
-        memoColCount,
+        col,
         false,
       );
-      newLayoutList = engine.compactLayout(newLayoutList, memoColCount, compactType);
+      newLayoutList = engine.compactLayout(newLayoutList, col, compactType);
       const placeLayout = newLayoutList.find((item) => item.id === curLayout.id);
       setPlaceholderLayout(placeLayout);
       changeLayouts(newLayoutList);
     },
-    [changeLayouts, compactType, memoColCount, memoLayoutList],
+    [changeLayouts, col, compactType, layoutList],
   );
 
   const handleDragEnd = React.useCallback(
@@ -169,14 +164,14 @@ const LayoutContainer: React.FC<LayoutContainerProps> = ({
       // console.log('[Container] darg end', JSON.stringify(memoLayoutList));
       if (!enginRef.current) return;
       const engine = enginRef.current;
-      curLayout.moving = false;
-      let newLayoutList = LayoutEngine.cloneLayoutList(memoLayoutList);
-      newLayoutList = engine.compactLayout(memoLayoutList, memoColCount, compactType);
+      curLayout.placeholder = false;
+      let newLayoutList = LayoutEngine.cloneLayoutList(layoutList);
+      newLayoutList = engine.compactLayout(layoutList, col, compactType);
       changeLayouts(newLayoutList);
       setPlaceholderLayout(undefined);
       setPlaceholderID('');
     },
-    [changeLayouts, compactType, memoColCount, memoLayoutList],
+    [changeLayouts, compactType, col, layoutList],
   );
 
   // ========= 校验子组件是否符合规范 =============
@@ -196,7 +191,7 @@ const LayoutContainer: React.FC<LayoutContainerProps> = ({
     React.Children.toArray(children).forEach((child) => {
       const curChildren = child as React.ReactElement<LayoutItemProps>;
       const { id } = curChildren.props;
-      const ownerLayout = memoLayoutList.find((item: Layout) => item.id === id);
+      const ownerLayout = layoutList.find((item: Layout) => item.id === id);
       if (!ownerLayout) return;
 
       // 找到对应的其对应的 key
@@ -204,7 +199,7 @@ const LayoutContainer: React.FC<LayoutContainerProps> = ({
         id,
         layout: ownerLayout,
         gap,
-        colCount: memoColCount,
+        colCount: col,
         colWidth: memoColWidth,
         rowHeight: memoRowHeight,
         draggableHandle: draggableHandle,
@@ -225,14 +220,13 @@ const LayoutContainer: React.FC<LayoutContainerProps> = ({
   }, [
     children,
     gap,
-    memoColCount,
-    memoBreakPointKey,
+    col,
     memoRowHeight,
     draggableHandle,
     handleDragStart,
     handleDragMove,
     handleDragEnd,
-    memoLayoutList,
+    layoutList,
     memoColWidth,
   ]);
 
@@ -261,7 +255,7 @@ const LayoutContainer: React.FC<LayoutContainerProps> = ({
         <Placeholder
           active={!!placeholderId}
           layout={placeholderLayout}
-          colCount={memoColCount}
+          colCount={col}
           rowHeight={memoRowHeight}
           gap={gap}
         />

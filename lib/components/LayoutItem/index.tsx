@@ -121,14 +121,6 @@ const LayoutItem: React.FC<LayoutItemProps> = ({
     }
   }, [draggableHandle, handleDragEnd, handleDragMove, handleDragStart, layout]);
 
-  // TODO: 测试代码，记得删除
-  React.useEffect(() => {
-    if (layout?.id === 'item2') {
-      console.log(`========== ${Date.now()}`);
-      console.warn(JSON.stringify(layout));
-    }
-  }, [layout]);
-
   return (
     <div
       ref={itemRef}

@@ -25,10 +25,8 @@ export interface Layout extends LayoutPosition {
   minH?: number;
   /** 布局组件，最大网格单位高度 */
   maxH?: number;
-  /**
-   * 是否正在移动，由 drag 或 resize 触发
-   */
-  moving?: boolean;
+  /** 是否占位块 */
+  placeholder?: boolean;
   /** 是否移动过 */
   moved?: boolean;
   /**
@@ -45,9 +43,9 @@ export interface Layout extends LayoutPosition {
   isResizable?: boolean;
 }
 
-export type Cols = Record<keyof BreakPoints, number>;
+export type ColBreakPoints = Record<keyof BreakPoints, number>;
 
-export type Layouts = Record<keyof BreakPoints, Layout[]>;
+export type LayoutBreakPoints = Record<keyof BreakPoints, Layout[]>;
 
 export interface Size {
   width: number;

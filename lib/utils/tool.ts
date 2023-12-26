@@ -21,7 +21,7 @@ export function cls(...classNamesList: Array<string | string[] | { [K: string]: 
       }
       return item;
     })
-    .toString()
+    .toString() // 输出 class1,class2,class3,...
     .split(',')
     .join(' ')
     .trim();
@@ -51,17 +51,13 @@ export function getScrollElement(el?: HTMLElement): HTMLElement {
 export function updateScroll(el: HTMLElement, distance: number) {
   const rect = el.getBoundingClientRect();
   const innterHeightOrClientHeight = window.innerHeight || document.documentElement.clientHeight;
-  console.group('updateScroll');
-  console.log('rect', JSON.stringify(rect));
-  console.log('innerHeight', innterHeightOrClientHeight);
   if (rect.top >= 0 || rect.bottom <= innterHeightOrClientHeight) return;
   const offsetDiffDown = rect.bottom - innterHeightOrClientHeight;
   const offsetDiffUp = rect.top;
   const scrollEl = getScrollElement(el);
   if (!scrollEl) return;
   const prevScrollTop = scrollEl.scrollTop;
-  console.log('prevScrollTop', prevScrollTop);
-  console.groupEnd();
+  console.log('🚀 ~ file: tool.ts:60 ~ updateScroll ~ prevScrollTop:', prevScrollTop);
   let nextScrollTop = rect.height + prevScrollTop;
   if (rect.top < 0 && distance < 0) {
     // 上滑

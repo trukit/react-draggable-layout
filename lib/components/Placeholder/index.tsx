@@ -18,15 +18,13 @@ const Placeholder: React.FC<PlaceholerProps> = ({ active, layout, colCount, rowH
     layout: layout
       ? {
           ...layout,
-          moving: false, // placeholder 不需要判断是否处于 moving 状态
+          placeholder: false,
         }
       : undefined,
     colCount,
     rowHeight,
     gap,
   });
-
-  // console.log('placeholder ========', JSON.stringify(layout));
 
   return (
     <div ref={elRef} className={cls('rdl-placeholder', 'rdl_animate', { 'rdl-placeholder__active': active })}>

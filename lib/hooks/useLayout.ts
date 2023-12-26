@@ -30,7 +30,7 @@ function useLayout(layoutRef: React.RefObject<HTMLElement> | null, options: Opti
   React.useEffect(() => {
     const layoutEl = layoutRef?.current;
     if (!layoutEl || !layout || !rowHeight) return;
-    if (layout.moving) return; // 如果处于 moving 状态，不经过 layout 布局设置，此时元素应该是通过 draggable 或 resizeable 设置
+    if (layout.placeholder) return;
     const uint = 100 / colCount;
     layoutEl.style.width = `${clampW * uint}%`;
     layoutEl.style.height = `${clampH * rowHeight}px`;
