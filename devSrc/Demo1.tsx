@@ -54,7 +54,7 @@ function Demo1() {
           draggableHandle=".draggable"
           layouts={layout}
           gap={[8, 8]}
-          compactType="horizontal"
+          compactType="vertical"
         >
           <LayoutItem className="box" id="item1">
             <div className="draggable" />

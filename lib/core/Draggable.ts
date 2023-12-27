@@ -3,6 +3,7 @@ import { Manager } from './Manager';
 import { BaseEvent } from './BaseEvent';
 import { DragUI } from '../types';
 import { updateScroll } from '../utils/tool';
+import { mouseDownIgnore } from './constants';
 
 interface DraggableOptions {
   /** name of the css class that triggers the drag */
@@ -24,8 +25,6 @@ interface DragOffset {
 }
 
 type DragEvent = 'drag' | 'dragstart' | 'dragstop';
-
-const mouseDownIgnore = 'input,textarea,button,select,option,[contenteditable="true"],.rdl-resizable-handle';
 
 export default class Draggable extends BaseEvent {
   public el: HTMLElement;
