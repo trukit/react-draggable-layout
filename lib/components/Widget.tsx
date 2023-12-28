@@ -166,6 +166,7 @@ const Widget: React.FC<IWidgetProps> = (props) => {
           );
         }
         widgetRef.current!.style.transition = 'none';
+        widgetRef.current!.style.position = 'fixed';
         dragFollow(e);
         setIsDragging(true);
         actionStartRef.current?.();
@@ -186,6 +187,7 @@ const Widget: React.FC<IWidgetProps> = (props) => {
         setIsDragging(false);
         setIsDragEnding(true);
         widgetRef.current!.style.transition = '';
+        widgetRef.current!.style.position = '';
         actionEndRef.current?.();
       }
       mouseDownEventRef.current = null;
@@ -279,6 +281,7 @@ const Widget: React.FC<IWidgetProps> = (props) => {
           );
         }
         widgetRef.current!.style.transition = 'none';
+        widgetRef.current!.style.position = 'fixed';
         resizeFollow(e);
         setIsResizing(true);
         actionStartRef.current?.();
@@ -299,6 +302,7 @@ const Widget: React.FC<IWidgetProps> = (props) => {
         setIsResizing(false);
         setIsResizeEnding(true);
         widgetRef.current!.style.transition = '';
+        widgetRef.current!.style.position = '';
         actionEndRef.current?.();
       }
       mouseDownEventRef.current = null;
