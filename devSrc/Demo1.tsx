@@ -11,7 +11,6 @@ const LayoutWrapper = styled(Layout)`
     height: 100%;
     box-sizing: border-box;
     background-color: #fff;
-    border: 1px solid #ccc;
     > div:not(.draggable) {
       width: 100%;
       height: 100%;
@@ -35,6 +34,10 @@ const LayoutWrapper = styled(Layout)`
       background-color: #00ba3d;
     }
   }
+  hr {
+    border: none;
+    border-top: 1px solid #000;
+  }
 `;
 
 const layout: IWidget[] = [
@@ -50,13 +53,14 @@ function Demo1() {
   return (
     <main>
       <h1>Demo1</h1>
+      <hr />
       <div>
         <LayoutWrapper
           className="container"
           col={16}
           draggableHandle=".draggable"
           widgets={layout}
-          gap={[8, 8]}
+          gap={[1, 1]}
           // compactType="vertical"
         >
           <Widget className="box" id="item1">

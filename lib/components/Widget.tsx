@@ -8,6 +8,8 @@ const Wrapper = styled.div`
   position: absolute;
   box-sizing: border-box;
   transition: none;
+  border-color: transparent;
+  border-style: solid;
   &.dragging,
   &.dragending,
   &.resizing,
@@ -377,14 +379,14 @@ const Widget: React.FC<IWidgetProps> = (props) => {
       widgetRef.current.style.left = `${left}px`;
     }
   }, [isDragEnding, isPlaceholder, isResizeEnding, widgetRect]);
-  // 设置每个 widget 的边距，以此保证边距一致性
+  // 设置每个 widget 间距，以此保证间距一致性
   React.useEffect(() => {
     if (!layoutData || !widgetRef.current) return;
     const { gap } = layoutData;
-    widgetRef.current.style.paddingLeft = gap ? `${gap[0] * 0.5}px` : '0';
-    widgetRef.current.style.paddingRight = gap ? `${gap[0] * 0.5}px` : '0';
-    widgetRef.current.style.paddingTop = gap ? `${gap[1] * 0.5}px` : '0';
-    widgetRef.current.style.paddingBottom = gap ? `${gap[1] * 0.5}px` : '0';
+    widgetRef.current.style.borderLeftWidth = gap ? `${gap[0] * 0.5}px` : '0';
+    widgetRef.current.style.borderRightWidth = gap ? `${gap[0] * 0.5}px` : '0';
+    widgetRef.current.style.borderTopWidth = gap ? `${gap[1] * 0.5}px` : '0';
+    widgetRef.current.style.borderBottomWidth = gap ? `${gap[1] * 0.5}px` : '0';
   }, [layoutData]);
 
   return (

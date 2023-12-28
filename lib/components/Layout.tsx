@@ -7,7 +7,6 @@ import Placeholder from './Placeholder';
 
 const Wrapper = styled.div`
   position: relative;
-  transition: left 0.3s, top 0.3s, width 0.3s, height 0.3s;
 `;
 
 export interface ILayoutProps {
