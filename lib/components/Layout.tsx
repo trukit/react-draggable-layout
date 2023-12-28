@@ -1,8 +1,9 @@
 import * as React from 'react';
-import type { IWidget } from '../types';
+import type { ILayoutData, IWidget } from '../types';
 import styled from 'styled-components';
 import { IWidgetProps } from './Widget';
 import useSize from '../hooks/useSize';
+import Placeholder from './Placeholder';
 
 const Wrapper = styled.div`
   position: relative;
@@ -34,6 +35,26 @@ const Layout: React.FC<ILayoutProps> = (props) => {
     resizeableHandle,
   } = props;
   const layoutRef = React.useRef<HTMLDivElement>(null);
+
+  // 处理 placeholder
+  const [activeWidgetId, setActiveWidgetId] = React.useState<string>('');
+  const [activeWidget, setActiveWidget] = React.useState<IWidget>();
+
+  const handleActionStart = React.useCallback((widget: IWidget) => {
+    setActiveWidgetId(widget.id);
+    setActiveWidget(widget);
+  }, []);
+
+  const handleActionEnd = React.useCallback(
+    (widget: IWidget) => {
+      console.log('layout handleActionEnd', widget, activeWidgetId);
+      if (widget.id === activeWidgetId) {
+        setActiveWidgetId('');
+        setActiveWidget(undefined);
+      }
+    },
+    [activeWidgetId],
+  );
 
   const size = useSize(layoutRef);
   const colWidth = React.useMemo<number>(() => {
@@ -70,6 +91,7 @@ const Layout: React.FC<ILayoutProps> = (props) => {
    */
   const [clonedChildren, setClonedChildren] = React.useState<React.ReactElement<IWidgetProps>[]>([]);
   const [layoutWidgets, setLayoutWidgets] = React.useState<IWidget[]>(widgets);
+  const [layoutData, setLayoutData] = React.useState<ILayoutData>();
   React.useEffect(() => {
     const tempList: Array<{
       id: string;
@@ -93,32 +115,49 @@ const Layout: React.FC<ILayoutProps> = (props) => {
       });
     });
 
+    const _layoutData = {
+      rows: rowCount,
+      cols: col,
+      width: colWidth * col,
+      height: rowHeight * rowCount,
+      rowHeight,
+      colWidth,
+      gap,
+    };
+    setLayoutData(_layoutData);
     const realChildren = tempList.map((item) =>
       React.cloneElement(item.child, {
         id: item.id,
         widget: item.widget,
         draggableHandle: item.child.props.draggableHandle || draggableHandle,
         resizeableHandle: item.child.props.resizeableHandle || resizeableHandle,
-        layoutData: {
-          rows: rowCount,
-          cols: col,
-          width: colWidth * col,
-          height: rowHeight * rowCount,
-          rowHeight,
-          colWidth,
-          gap,
-        },
+        layoutData: _layoutData,
+        onActionStart: handleActionStart,
+        onActionEnd: handleActionEnd,
       }),
     );
     setClonedChildren(realChildren);
     if (layoutRef.current) {
       layoutRef.current.style.height = `${rowCount * rowHeight}px`;
     }
-  }, [children, col, colWidth, draggableHandle, gap, layoutWidgets, resizeableHandle, rowHeight, widgets]);
+  }, [
+    children,
+    col,
+    colWidth,
+    draggableHandle,
+    gap,
+    handleActionEnd,
+    handleActionStart,
+    layoutWidgets,
+    resizeableHandle,
+    rowHeight,
+    widgets,
+  ]);
 
   return (
     <Wrapper ref={layoutRef} className={className}>
       {clonedChildren}
+      <Placeholder show={!!activeWidgetId} widget={activeWidget} layoutData={layoutData} />
     </Wrapper>
   );
 };

@@ -3,8 +3,6 @@ import { createBrowserRouter, RouterProvider } from 'react-router-dom';
 import ChartDemo from './ChartDemo.tsx';
 import Demo1 from './Demo1.tsx';
 
-import '@zeus/react-dragger-layout/style.less';
-
 const router = createBrowserRouter([
   {
     path: '/',

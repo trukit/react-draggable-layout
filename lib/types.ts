@@ -40,7 +40,7 @@ export interface IBoxPosition {
   left: number;
 }
 
-export interface IDragOffset {
+export interface IActionOffset {
   top: number;
   left: number;
   offsetTop: number;

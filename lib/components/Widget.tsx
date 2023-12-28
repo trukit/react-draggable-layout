@@ -1,7 +1,7 @@
 import * as React from 'react';
-import type { IDragOffset, ILayoutData, IWidget } from '../types';
+import type { IActionOffset, ILayoutData, IWidget } from '../types';
 import styled from 'styled-components';
-import { Manager, MouseDownIgnore, clamp, cls, getDragOffset } from '../utils';
+import { Manager, MouseDownIgnore, clamp, cls, getActionOffset } from '../utils';
 import useWidget from '../hooks/useWidget';
 
 const Wrapper = styled.div`
@@ -82,23 +82,64 @@ export interface IWidgetProps {
   draggableHandle?: string;
   resizeableHandle?: string;
   layoutData?: ILayoutData;
+  onActionStart?: (widget: IWidget) => void;
+  onActionDoing?: (widget: IWidget) => void;
+  onActionEnd?: (widget: IWidget) => void;
 }
 
 const Widget: React.FC<IWidgetProps> = (props) => {
-  const { id, children, className, widget, layoutData, draggableHandle, resizeableHandle } = props;
+  const {
+    id,
+    children,
+    className,
+    widget,
+    layoutData,
+    draggableHandle,
+    resizeableHandle,
+    onActionStart,
+    onActionDoing,
+    onActionEnd,
+  } = props;
   const widgetRef = React.useRef<HTMLDivElement>(null);
   const mouseDownEventRef = React.useRef<MouseEvent | null>(null);
+  const actionOffsetRef = React.useRef<IActionOffset | null>(null);
+
+  const actionStartRef = React.useRef<() => void>();
+  const handleActionStart = React.useCallback(() => {
+    if (!widget) return;
+    onActionStart?.(widget);
+  }, [onActionStart, widget]);
+  React.useEffect(() => {
+    actionStartRef.current = handleActionStart;
+  }, [handleActionStart]);
+
+  const actionDoingRef = React.useRef<() => void>();
+  const handleActionDoing = React.useCallback(() => {
+    if (!widget) return;
+    onActionDoing?.(widget);
+  }, [onActionDoing, widget]);
+  React.useEffect(() => {
+    actionDoingRef.current = handleActionDoing;
+  }, [handleActionDoing]);
+
+  const actionEndRef = React.useRef<() => void>();
+  const handleActionEnd = React.useCallback(() => {
+    if (!widget) return;
+    onActionEnd?.(widget);
+  }, [onActionEnd, widget]);
+  React.useEffect(() => {
+    actionEndRef.current = handleActionEnd;
+  }, [handleActionEnd]);
 
   // ========================
   // ===== Draggable ========
   // ========================
   const dragElRef = React.useRef<HTMLElement | null>(null);
-  const dragOffsetRef = React.useRef<IDragOffset | null>(null);
   const [isDragging, setIsDragging] = React.useState<boolean>(false);
   const [isDragEnding, setIsDragEnding] = React.useState<boolean>(false);
   const dragFollow = React.useCallback((e: MouseEvent) => {
-    if (!dragOffsetRef.current || !widgetRef.current) return;
-    const { offsetLeft, offsetTop } = dragOffsetRef.current;
+    if (!actionOffsetRef.current || !widgetRef.current) return;
+    const { offsetLeft, offsetTop } = actionOffsetRef.current;
     widgetRef.current.style.left = `${e.clientX + offsetLeft}px`;
     widgetRef.current.style.top = `${e.clientY + offsetTop}px`;
   }, []);
@@ -110,16 +151,22 @@ const Widget: React.FC<IWidgetProps> = (props) => {
       if (Manager.isDragging) {
         console.log('dragging');
         dragFollow(e);
+        actionDoingRef.current?.();
       } else if (Math.abs(e.x - s.x) + Math.abs(e.y - s.y) > 3) {
         console.log('dragging start');
         Manager.isDragging = true;
         Manager.dragWidgetId = id;
         if (widgetRef.current) {
-          dragOffsetRef.current = getDragOffset(e, widgetRef.current, widgetRef.current.parentElement as HTMLElement);
+          actionOffsetRef.current = getActionOffset(
+            e,
+            widgetRef.current,
+            widgetRef.current.parentElement as HTMLElement,
+          );
         }
         widgetRef.current!.style.transition = 'none';
         dragFollow(e);
         setIsDragging(true);
+        actionStartRef.current?.();
       }
     },
     [dragFollow, id],
@@ -137,6 +184,7 @@ const Widget: React.FC<IWidgetProps> = (props) => {
         setIsDragging(false);
         setIsDragEnding(true);
         widgetRef.current!.style.transition = '';
+        actionEndRef.current?.();
       }
       mouseDownEventRef.current = null;
       Manager.dragWidgetId = '';
@@ -196,8 +244,8 @@ const Widget: React.FC<IWidgetProps> = (props) => {
   const [isResizeEnding, setIsResizeEnding] = React.useState<boolean>(false);
   const resizeFollow = React.useCallback(
     (e: MouseEvent) => {
-      if (!dragOffsetRef.current || !mouseDownEventRef.current || !widgetRef.current) return;
-      const { width, height, left, top } = dragOffsetRef.current;
+      if (!actionOffsetRef.current || !mouseDownEventRef.current || !widgetRef.current) return;
+      const { width, height, left, top } = actionOffsetRef.current;
       const { clientX, clientY } = mouseDownEventRef.current;
       const offsetWidth = e.clientX - clientX;
       const offsetHeight = e.clientY - clientY;
@@ -216,16 +264,22 @@ const Widget: React.FC<IWidgetProps> = (props) => {
       if (Manager.isReszing) {
         console.log('resizing');
         resizeFollow(e);
+        actionDoingRef.current?.();
       } else if (Math.abs(e.x - s.x) + Math.abs(e.y - s.y) > 3) {
         console.log('resize start');
         Manager.isReszing = true;
         Manager.resizeWidgetId = id;
         if (widgetRef.current) {
-          dragOffsetRef.current = getDragOffset(e, widgetRef.current, widgetRef.current.parentElement as HTMLElement);
+          actionOffsetRef.current = getActionOffset(
+            e,
+            widgetRef.current,
+            widgetRef.current.parentElement as HTMLElement,
+          );
         }
         widgetRef.current!.style.transition = 'none';
         resizeFollow(e);
         setIsResizing(true);
+        actionStartRef.current?.();
       }
     },
     [id, resizeFollow],
@@ -243,6 +297,7 @@ const Widget: React.FC<IWidgetProps> = (props) => {
         setIsResizing(false);
         setIsResizeEnding(true);
         widgetRef.current!.style.transition = '';
+        actionEndRef.current?.();
       }
       mouseDownEventRef.current = null;
       Manager.resizeWidgetId = '';
@@ -279,7 +334,7 @@ const Widget: React.FC<IWidgetProps> = (props) => {
     resizeElRef.current.removeEventListener('mousedown', resizeMouseDown);
     resizeElRef.current = null;
   }, [resizeMouseDown]);
-  // 判断开启和关闭的时机
+  // 判断开启和关闭 resize 的时机
   React.useEffect(() => {
     if (!layoutData?.width || !widget) return;
     if (widget.static || widget.isResizeable === false) {
@@ -293,7 +348,6 @@ const Widget: React.FC<IWidgetProps> = (props) => {
   // ======= Layout =========
   // ========================
   const isPlaceholder = React.useMemo<boolean>(() => isDragging || isResizing, [isDragging, isResizing]);
-  // const isEnding = React.useMemo<boolean>(() => isDragEnding || isResizeEnding, [isDragEnding, isResizeEnding]);
   const handleTransitionEnd = React.useCallback(() => {
     widgetRef.current!.style.transition = 'none';
     if (isDragEnding) {
@@ -311,12 +365,11 @@ const Widget: React.FC<IWidgetProps> = (props) => {
   React.useEffect(() => {
     if (!widgetRect || !widgetRef.current || isPlaceholder) return;
     const { left, top, width, height } = widgetRect;
-    console.log('widgetRect', widgetRect);
     widgetRef.current.style.width = `${width}px`;
     widgetRef.current.style.height = `${height}px`;
-    if ((isDragEnding || isResizeEnding) && dragOffsetRef.current) {
-      console.log(dragOffsetRef.current);
-      const { layoutLeft, layoutTop } = dragOffsetRef.current;
+    if ((isDragEnding || isResizeEnding) && actionOffsetRef.current) {
+      // 等 fixed 定位下的移动动画结束
+      const { layoutLeft, layoutTop } = actionOffsetRef.current;
       widgetRef.current.style.top = `${top + layoutTop}px`;
       widgetRef.current.style.left = `${left + layoutLeft}px`;
     } else {
@@ -324,7 +377,7 @@ const Widget: React.FC<IWidgetProps> = (props) => {
       widgetRef.current.style.left = `${left}px`;
     }
   }, [isDragEnding, isPlaceholder, isResizeEnding, widgetRect]);
-  // padding
+  // 设置每个 widget 的边距，以此保证边距一致性
   React.useEffect(() => {
     if (!layoutData || !widgetRef.current) return;
     const { gap } = layoutData;

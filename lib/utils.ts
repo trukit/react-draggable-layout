@@ -1,4 +1,4 @@
-import type { IDragOffset } from './types';
+import type { IActionOffset } from './types';
 
 export const Manager = {
   mouseHandled: false,
@@ -29,7 +29,7 @@ export function clamp(num: number, min: number, max: number) {
   return num <= min ? min : num >= max ? max : num;
 }
 
-export function getDragOffset(e: MouseEvent, widget: HTMLElement, layout: HTMLElement): IDragOffset {
+export function getActionOffset(e: MouseEvent, widget: HTMLElement, layout: HTMLElement): IActionOffset {
   const targetOffset = widget.getBoundingClientRect();
   const layoutOffset = layout.getBoundingClientRect();
   const result = {
