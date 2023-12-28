@@ -24,13 +24,13 @@
     "ignoreDeprecations": "5.0",
     "paths": {
       "@zeus/react-dragger-layout": [
-        "./lib"
+        "oldlib"
       ]
     }
   },
   "include": [
     "devSrc/**/*",
-    "lib/**/*"
+    "oldlib/**/*"
   ],
   "exclude": [
     "node_modules"

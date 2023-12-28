@@ -260,8 +260,13 @@ export default class Draggable extends BaseEvent {
       offsetY = testElPosition.top;
       // TODO: scale?
     }
+    console.log(`mouse (${e.clientX}, ${e.clientY})`);
+    console.log(`offset (${offsetX}, ${offsetY})`);
 
     const targetOffset = el.getBoundingClientRect();
+    console.log(parent);
+    console.log(el);
+    console.log(`el (${targetOffset.left}, ${targetOffset.top})`);
     return {
       left: targetOffset.left,
       top: targetOffset.top,

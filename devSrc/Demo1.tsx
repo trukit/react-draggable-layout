@@ -1,14 +1,17 @@
-import { LayoutContainer, LayoutItem } from '../lib';
-import { Layout } from '../lib/types';
+import { Layout, Widget } from '../lib';
+import type { IWidget } from '../lib/types';
 import styled from 'styled-components';
+import LayoutContainer from '../oldlib/components/LayoutContainer';
+import LayoutItem from '../oldlib/components/LayoutItem';
 
-const LayoutWrapper = styled(LayoutContainer)`
+const LayoutWrapper = styled(Layout)`
   background-color: #c4cf8c;
   .box {
     width: 100%;
     height: 100%;
     box-sizing: border-box;
     background-color: #fff;
+    border: 1px solid #ccc;
     > div:not(.draggable) {
       width: 100%;
       height: 100%;
@@ -34,7 +37,7 @@ const LayoutWrapper = styled(LayoutContainer)`
   }
 `;
 
-const layout: Layout[] = [
+const layout: IWidget[] = [
   { id: 'item1', x: 0, y: 0, w: 2, h: 2 },
   { id: 'item2', x: 2, y: 0, w: 2, h: 2 },
   { id: 'item3', x: 4, y: 0, w: 2, h: 2 },
@@ -50,11 +53,43 @@ function Demo1() {
       <div>
         <LayoutWrapper
           className="container"
-          col={12}
+          col={8}
+          draggableHandle=".draggable"
+          widgets={layout}
+          gap={[8, 8]}
+          // compactType="vertical"
+        >
+          <Widget className="box" id="item1">
+            <div className="draggable" />
+            <div>item1</div>
+          </Widget>
+          <Widget className="box" id="item2">
+            <div className="draggable" />
+            <div>item2</div>
+          </Widget>
+          <Widget className="box" id="item3">
+            <div className="draggable" />
+            <div>item3</div>
+          </Widget>
+          <Widget className="box" id="item4">
+            <div className="draggable" />
+            <div>item4</div>
+          </Widget>
+          <Widget className="box" id="item5">
+            <div className="draggable" />
+            <div>item5</div>
+          </Widget>
+          <Widget className="box" id="item6">
+            <div>item6 [static]</div>
+          </Widget>
+        </LayoutWrapper>
+        {/* <LayoutWrapper
+          className="container"
+          col={8}
           draggableHandle=".draggable"
           layouts={layout}
           gap={[8, 8]}
-          compactType="vertical"
+          // compactType="vertical"
         >
           <LayoutItem className="box" id="item1">
             <div className="draggable" />
@@ -79,7 +114,7 @@ function Demo1() {
           <LayoutItem className="box" id="item6">
             <div>item6 [static]</div>
           </LayoutItem>
-        </LayoutWrapper>
+        </LayoutWrapper> */}
       </div>
     </main>
   );

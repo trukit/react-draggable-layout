@@ -1,2 +1,2 @@
-export { default as LayoutContainer } from './components/LayoutContainer';
-export { default as LayoutItem } from './components/LayoutItem';
+export { default as Layout } from './components/Layout';
+export { default as Widget } from './components/Widget';

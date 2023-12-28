@@ -1,5 +1,5 @@
-import { LayoutContainer, LayoutItem } from '../lib';
-import { Layouts } from '../lib/types';
+import { LayoutContainer, LayoutItem } from '../oldlib';
+import { Layouts } from '../oldlib/types';
 
 import styled from 'styled-components';
 
