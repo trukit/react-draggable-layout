@@ -4,6 +4,22 @@ import styled from 'styled-components';
 import LayoutContainer from '../oldlib/components/LayoutContainer';
 import LayoutItem from '../oldlib/components/LayoutItem';
 
+const Wrapper = styled.main`
+  padding: 10px;
+  width: 100%;
+  height: 100vh;
+  box-sizing: border-box;
+  background-color: #c2c2c2;
+  hr {
+    border: none;
+    border-top: 1px solid #c4cf8c;
+  }
+  h1 + div {
+    padding: -0.5px;
+    overflow: hidden;
+  }
+`;
+
 const LayoutWrapper = styled(Layout)`
   background-color: #c4cf8c;
   .box {
@@ -34,10 +50,6 @@ const LayoutWrapper = styled(Layout)`
       background-color: #00ba3d;
     }
   }
-  hr {
-    border: none;
-    border-top: 1px solid #000;
-  }
 `;
 
 const layout: IWidget[] = [
@@ -51,9 +63,9 @@ const layout: IWidget[] = [
 
 function Demo1() {
   return (
-    <main>
+    <Wrapper>
       <h1>Demo1</h1>
-      <hr />
+      {/* <hr /> */}
       <div>
         <LayoutWrapper
           className="container"
@@ -120,7 +132,7 @@ function Demo1() {
           </LayoutItem>
         </LayoutWrapper> */}
       </div>
-    </main>
+    </Wrapper>
   );
 }
 
