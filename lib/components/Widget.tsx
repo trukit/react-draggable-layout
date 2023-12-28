@@ -1,7 +1,7 @@
 import * as React from 'react';
 import type { IDragOffset, ILayoutData, IWidget } from '../types';
 import styled from 'styled-components';
-import { Manager, MouseDownIgnore, cls, getDragOffset } from '../utils';
+import { Manager, MouseDownIgnore, clamp, cls, getDragOffset } from '../utils';
 import useWidget from '../hooks/useWidget';
 
 const Wrapper = styled.div`
@@ -45,10 +45,14 @@ const Wrapper = styled.div`
 
   > .default_resize {
     position: absolute;
-    bottom: 4px;
-    right: 4px;
+    width: 18px;
+    height: 18px;
+    bottom: 8px;
+    right: 8px;
     opacity: 0;
     transition: opacity 0.3s ease-in-out;
+    color: rgba(0, 0, 0, 0.3);
+    cursor: nwse-resize;
   }
   &:hover {
     > .default_resize {
@@ -106,10 +110,10 @@ const Widget: React.FC<IWidgetProps> = (props) => {
       if (Manager.isDragging) {
         console.log('dragging');
         dragFollow(e);
-      } else if (Math.abs(e.x - s.x) + Math.abs(e.y + s.y) > 3) {
+      } else if (Math.abs(e.x - s.x) + Math.abs(e.y - s.y) > 3) {
         console.log('dragging start');
         Manager.isDragging = true;
-        Manager.dragElementId = id;
+        Manager.dragWidgetId = id;
         if (widgetRef.current) {
           dragOffsetRef.current = getDragOffset(e, widgetRef.current, widgetRef.current.parentElement as HTMLElement);
         }
@@ -135,7 +139,7 @@ const Widget: React.FC<IWidgetProps> = (props) => {
         widgetRef.current!.style.transition = '';
       }
       mouseDownEventRef.current = null;
-      Manager.dragElementId = '';
+      Manager.dragWidgetId = '';
       Manager.mouseHandled = false;
       e.preventDefault();
     },
@@ -176,13 +180,13 @@ const Widget: React.FC<IWidgetProps> = (props) => {
   }, [dragMouseDown]);
   // 判断开启和关闭的时机
   React.useEffect(() => {
-    console.log('dragger');
-    if (!widget || widget.static || widget.isDraggable === false) {
+    if (!layoutData?.width || !widget) return;
+    if (widget.static || widget.isDraggable === false) {
       diableDraggable();
-    } else {
-      enableDraggable();
+      return;
     }
-  }, [diableDraggable, enableDraggable, widget]);
+    enableDraggable();
+  }, [diableDraggable, enableDraggable, layoutData, widget]);
 
   // ========================
   // ===== Resizeable =======
@@ -190,12 +194,100 @@ const Widget: React.FC<IWidgetProps> = (props) => {
   const resizeElRef = React.useRef<HTMLElement | null>(null);
   const [isResizing, setIsResizing] = React.useState<boolean>(false);
   const [isResizeEnding, setIsResizeEnding] = React.useState<boolean>(false);
-  const resizeMouseDown = React.useCallback((e: MouseEvent) => {}, []);
+  const resizeFollow = React.useCallback(
+    (e: MouseEvent) => {
+      if (!dragOffsetRef.current || !mouseDownEventRef.current || !widgetRef.current) return;
+      const { width, height, left, top } = dragOffsetRef.current;
+      const { clientX, clientY } = mouseDownEventRef.current;
+      const offsetWidth = e.clientX - clientX;
+      const offsetHeight = e.clientY - clientY;
+      widgetRef.current.style.left = `${left}px`;
+      widgetRef.current.style.top = `${top}px`;
+      const newWidth = clamp(width + offsetWidth, layoutData?.colWidth || 0, layoutData?.width || Infinity);
+      const newHeight = clamp(height + offsetHeight, layoutData?.rowHeight || 0, layoutData?.height || Infinity);
+      widgetRef.current.style.width = `${newWidth}px`;
+      widgetRef.current.style.height = `${newHeight}px`;
+    },
+    [layoutData],
+  );
+  const resizeMouseMove = React.useCallback(
+    (e: MouseEvent) => {
+      const s = mouseDownEventRef.current as MouseEvent;
+      if (Manager.isReszing) {
+        console.log('resizing');
+        resizeFollow(e);
+      } else if (Math.abs(e.x - s.x) + Math.abs(e.y - s.y) > 3) {
+        console.log('resize start');
+        Manager.isReszing = true;
+        Manager.resizeWidgetId = id;
+        if (widgetRef.current) {
+          dragOffsetRef.current = getDragOffset(e, widgetRef.current, widgetRef.current.parentElement as HTMLElement);
+        }
+        widgetRef.current!.style.transition = 'none';
+        resizeFollow(e);
+        setIsResizing(true);
+      }
+    },
+    [id, resizeFollow],
+  );
+  // 鼠标抬起
+  const resizeMouseUp = React.useCallback(
+    (e: MouseEvent) => {
+      console.log('resizeMouseUp');
+      document.removeEventListener('mousemove', resizeMouseMove);
+      document.removeEventListener('mouseup', resizeMouseUp);
+      if (Manager.isReszing) {
+        console.log('reszing end');
+        Manager.isReszing = false;
+        document.body.style.cursor = 'auto';
+        setIsResizing(false);
+        setIsResizeEnding(true);
+        widgetRef.current!.style.transition = '';
+      }
+      mouseDownEventRef.current = null;
+      Manager.resizeWidgetId = '';
+      Manager.mouseHandled = false;
+      e.preventDefault();
+    },
+    [resizeMouseMove],
+  );
+  // 鼠标按下
+  const resizeMouseDown = React.useCallback(
+    (e: MouseEvent) => {
+      console.log('resizeMouseDown');
+      if (Manager.mouseHandled) return;
+      if (e.button !== 0) return;
+      if ((e.target as HTMLElement).closest(MouseDownIgnore)) return;
+      mouseDownEventRef.current = e;
+      document.addEventListener('mousemove', resizeMouseMove);
+      document.addEventListener('mouseup', resizeMouseUp);
+      e.preventDefault();
+      if (document.activeElement) (document.activeElement as HTMLElement).blur();
+      Manager.mouseHandled = true;
+      document.body.style.cursor = 'nwse-resize';
+    },
+    [resizeMouseMove, resizeMouseUp],
+  );
   // 开启 resize
   const enableResizable = React.useCallback(() => {
-    if (resizeElRef.current) return;
-    // resizeElRef.current?.addEventListener('mousedown', resizeMouseDown);
-  }, []);
+    console.log('enableResizable');
+    resizeElRef.current!.addEventListener('mousedown', resizeMouseDown);
+  }, [resizeMouseDown]);
+  // 关闭 resize
+  const disableResizable = React.useCallback(() => {
+    if (!resizeElRef.current) return;
+    resizeElRef.current.removeEventListener('mousedown', resizeMouseDown);
+    resizeElRef.current = null;
+  }, [resizeMouseDown]);
+  // 判断开启和关闭的时机
+  React.useEffect(() => {
+    if (!layoutData?.width || !widget) return;
+    if (widget.static || widget.isResizeable === false) {
+      disableResizable();
+      return;
+    }
+    enableResizable();
+  }, [disableResizable, enableResizable, layoutData, widget]);
 
   // ========================
   // ======= Layout =========
@@ -207,7 +299,10 @@ const Widget: React.FC<IWidgetProps> = (props) => {
     if (isDragEnding) {
       setIsDragEnding(false);
     }
-  }, [isDragEnding]);
+    if (isResizeEnding) {
+      setIsResizeEnding(false);
+    }
+  }, [isDragEnding, isResizeEnding]);
   const widgetRect = useWidget({
     widget,
     layoutData,
@@ -219,7 +314,7 @@ const Widget: React.FC<IWidgetProps> = (props) => {
     console.log('widgetRect', widgetRect);
     widgetRef.current.style.width = `${width}px`;
     widgetRef.current.style.height = `${height}px`;
-    if (isDragEnding && dragOffsetRef.current) {
+    if ((isDragEnding || isResizeEnding) && dragOffsetRef.current) {
       console.log(dragOffsetRef.current);
       const { layoutLeft, layoutTop } = dragOffsetRef.current;
       widgetRef.current.style.top = `${top + layoutTop}px`;
@@ -228,7 +323,7 @@ const Widget: React.FC<IWidgetProps> = (props) => {
       widgetRef.current.style.top = `${top}px`;
       widgetRef.current.style.left = `${left}px`;
     }
-  }, [isDragEnding, isPlaceholder, widgetRect]);
+  }, [isDragEnding, isPlaceholder, isResizeEnding, widgetRect]);
   // padding
   React.useEffect(() => {
     if (!layoutData || !widgetRef.current) return;

@@ -53,7 +53,7 @@ function Demo1() {
       <div>
         <LayoutWrapper
           className="container"
-          col={8}
+          col={16}
           draggableHandle=".draggable"
           widgets={layout}
           gap={[8, 8]}

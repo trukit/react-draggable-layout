@@ -4,7 +4,8 @@ export const Manager = {
   mouseHandled: false,
   isDragging: false,
   isReszing: false,
-  dragElementId: '',
+  dragWidgetId: '',
+  resizeWidgetId: '',
 };
 
 export const MouseDownIgnore = 'input,textarea,button,select,option,[contenteditable="true"],.rdl-resizable-handle';
