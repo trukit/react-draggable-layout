@@ -1,9 +1,10 @@
 import * as React from 'react';
-import type { ILayoutData, IWidget } from '../types';
+import type { ILayoutData, IWidget, IWidgetPosition } from '../types';
 import styled from 'styled-components';
 import { IWidgetProps } from './Widget';
 import useSize from '../hooks/useSize';
 import Placeholder from './Placeholder';
+import { LayoutEngine } from '../engine';
 
 const Wrapper = styled.div`
   position: relative;
@@ -34,15 +35,43 @@ const Layout: React.FC<ILayoutProps> = (props) => {
     resizeableHandle,
   } = props;
   const layoutRef = React.useRef<HTMLDivElement>(null);
+  const [layoutWidgets, setLayoutWidgets] = React.useState<IWidget[]>(widgets);
+  React.useEffect(() => {
+    setLayoutWidgets(widgets);
+  }, [widgets]);
 
-  // 处理 placeholder
+  // 布局更新与 Placeholder
+  const engineRef = React.useRef<LayoutEngine>();
   const [activeWidgetId, setActiveWidgetId] = React.useState<string>('');
   const [activeWidget, setActiveWidget] = React.useState<IWidget>();
+  // 根据 widgets 组件数组，实例化布局引擎
+  React.useEffect(() => {
+    if (widgets) {
+      engineRef.current = new LayoutEngine(widgets);
+    }
+  }, [widgets]);
 
   const handleActionStart = React.useCallback((widget: IWidget) => {
     setActiveWidgetId(widget.id);
     setActiveWidget(widget);
   }, []);
+
+  const handleActionDoing = React.useCallback(
+    (widget: IWidget, newWidgetPos: IWidgetPosition) => {
+      if (!engineRef.current) return;
+      console.log(`操作 widget === ${widget.id}`, newWidgetPos);
+      const tempLayoutWidgets = JSON.parse(JSON.stringify(layoutWidgets)) as IWidget[];
+      const curWidget = tempLayoutWidgets.find((w) => w.id === widget.id) as IWidget;
+      curWidget.x = newWidgetPos.x;
+      curWidget.y = newWidgetPos.y;
+      curWidget.w = newWidgetPos.w;
+      curWidget.h = newWidgetPos.h;
+      setActiveWidget(curWidget);
+      const newLayoutWidgets = engineRef.current.batchUpdate(tempLayoutWidgets);
+      setLayoutWidgets(newLayoutWidgets);
+    },
+    [layoutWidgets],
+  );
 
   const handleActionEnd = React.useCallback(
     (widget: IWidget) => {
@@ -89,7 +118,6 @@ const Layout: React.FC<ILayoutProps> = (props) => {
    * 根据 props 和布局框架 size 变动，更新子节点
    */
   const [clonedChildren, setClonedChildren] = React.useState<React.ReactElement<IWidgetProps>[]>([]);
-  const [layoutWidgets, setLayoutWidgets] = React.useState<IWidget[]>(widgets);
   const [layoutData, setLayoutData] = React.useState<ILayoutData>();
   React.useEffect(() => {
     const tempList: Array<{
@@ -132,6 +160,7 @@ const Layout: React.FC<ILayoutProps> = (props) => {
         resizeableHandle: item.child.props.resizeableHandle || resizeableHandle,
         layoutData: _layoutData,
         onActionStart: handleActionStart,
+        onActionDoing: handleActionDoing,
         onActionEnd: handleActionEnd,
       }),
     );
@@ -145,6 +174,7 @@ const Layout: React.FC<ILayoutProps> = (props) => {
     colWidth,
     draggableHandle,
     gap,
+    handleActionDoing,
     handleActionEnd,
     handleActionStart,
     layoutWidgets,

@@ -56,7 +56,7 @@ const layout: IWidget[] = [
   { id: 'item1', x: 0, y: 0, w: 2, h: 2 },
   { id: 'item2', x: 2, y: 0, w: 2, h: 2 },
   { id: 'item3', x: 4, y: 0, w: 2, h: 2 },
-  { id: 'item4', x: 6, y: 0, w: 2, h: 2 },
+  { id: 'item4', x: 6, y: 0, w: 2, h: 2, maxW: 3, maxH: 5 },
   { id: 'item5', x: 0, y: 2, w: 4, h: 2 },
   { id: 'item6', x: 4, y: 2, w: 4, h: 2, static: true },
 ];

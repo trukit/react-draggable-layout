@@ -1,5 +1,5 @@
 import * as React from 'react';
-import type { IActionOffset, ILayoutData, IWidget } from '../types';
+import type { IActionOffset, ILayoutData, IWidget, IWidgetPosition } from '../types';
 import styled from 'styled-components';
 import { Manager, MouseDownIgnore, clamp, cls, getActionOffset } from '../utils';
 import useWidget from '../hooks/useWidget';
@@ -85,7 +85,7 @@ export interface IWidgetProps {
   resizeableHandle?: string;
   layoutData?: ILayoutData;
   onActionStart?: (widget: IWidget) => void;
-  onActionDoing?: (widget: IWidget) => void;
+  onActionDoing?: (widget: IWidget, newWidgetPos: IWidgetPosition) => void;
   onActionEnd?: (widget: IWidget) => void;
 }
 
@@ -106,6 +106,34 @@ const Widget: React.FC<IWidgetProps> = (props) => {
   const mouseDownEventRef = React.useRef<MouseEvent | null>(null);
   const actionOffsetRef = React.useRef<IActionOffset | null>(null);
 
+  const calcNewWidgetPosition = React.useCallback<() => IWidgetPosition | undefined>(() => {
+    if (!widgetRef.current || !actionOffsetRef.current || !layoutData || !widget) return;
+    const { colWidth, rowHeight, cols } = layoutData;
+    const { layoutLeft, layoutTop } = actionOffsetRef.current;
+    const { left, top, width, height } = widgetRef.current.getBoundingClientRect();
+    let newX = Math.round((left - layoutLeft) / colWidth);
+    let newY = Math.round((top - layoutTop) / rowHeight);
+    // 获取新的宽高，并限制在 maxW 和 maxH 之内
+    let newW = clamp(Math.round(width / colWidth), widget.minW ?? 1, widget.maxW ?? cols - 1);
+    let newH = clamp(Math.round(height / rowHeight), widget.minH ?? 1, widget.maxH ?? Infinity);
+    if (newX + newW > cols - 1) {
+      // 限制大小不能在拖拽时超出容器右边
+      if (newW === widget?.w) {
+        newX = cols - newW;
+      } else {
+        newW = cols - newX;
+      }
+    }
+    if (newX <= 0) newX = 0;
+    if (newY <= 0) newY = 0;
+    return {
+      x: newX,
+      y: newY,
+      w: newW,
+      h: newH,
+    };
+  }, [layoutData, widget]);
+
   const actionStartRef = React.useRef<() => void>();
   const handleActionStart = React.useCallback(() => {
     if (!widget) return;
@@ -118,8 +146,11 @@ const Widget: React.FC<IWidgetProps> = (props) => {
   const actionDoingRef = React.useRef<() => void>();
   const handleActionDoing = React.useCallback(() => {
     if (!widget) return;
-    onActionDoing?.(widget);
-  }, [onActionDoing, widget]);
+    const widgetPos = calcNewWidgetPosition();
+    if (widgetPos) {
+      onActionDoing?.(widget, widgetPos);
+    }
+  }, [calcNewWidgetPosition, onActionDoing, widget]);
   React.useEffect(() => {
     actionDoingRef.current = handleActionDoing;
   }, [handleActionDoing]);
@@ -256,7 +287,7 @@ const Widget: React.FC<IWidgetProps> = (props) => {
       widgetRef.current.style.left = `${left}px`;
       widgetRef.current.style.top = `${top}px`;
       const newWidth = clamp(width + offsetWidth, layoutData?.colWidth || 0, layoutData?.width || Infinity);
-      const newHeight = clamp(height + offsetHeight, layoutData?.rowHeight || 0, layoutData?.height || Infinity);
+      const newHeight = clamp(height + offsetHeight, layoutData?.rowHeight || 0, Infinity);
       widgetRef.current.style.width = `${newWidth}px`;
       widgetRef.current.style.height = `${newHeight}px`;
     },
