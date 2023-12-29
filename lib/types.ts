@@ -28,6 +28,9 @@ export interface IWidget extends IWidgetPosition {
   static?: boolean;
   isDraggable?: boolean;
   isResizeable?: boolean;
+  /** 正在拖拽或 resize */
+  _actioning?: boolean;
+  _skipDown?: boolean;
 }
 
 export interface ISize {

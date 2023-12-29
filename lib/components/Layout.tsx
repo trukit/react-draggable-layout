@@ -36,6 +36,7 @@ const Layout: React.FC<ILayoutProps> = (props) => {
   } = props;
   const layoutRef = React.useRef<HTMLDivElement>(null);
   const [layoutWidgets, setLayoutWidgets] = React.useState<IWidget[]>(widgets);
+  const [layoutData, setLayoutData] = React.useState<ILayoutData>();
   React.useEffect(() => {
     setLayoutWidgets(widgets);
   }, [widgets]);
@@ -46,10 +47,10 @@ const Layout: React.FC<ILayoutProps> = (props) => {
   const [activeWidget, setActiveWidget] = React.useState<IWidget>();
   // 根据 widgets 组件数组，实例化布局引擎
   React.useEffect(() => {
-    if (widgets) {
-      engineRef.current = new LayoutEngine(widgets);
+    if (widgets && layoutData) {
+      engineRef.current = new LayoutEngine(widgets, layoutData);
     }
-  }, [widgets]);
+  }, [layoutData, widgets]);
 
   const handleActionStart = React.useCallback((widget: IWidget) => {
     setActiveWidgetId(widget.id);
@@ -60,14 +61,14 @@ const Layout: React.FC<ILayoutProps> = (props) => {
     (widget: IWidget, newWidgetPos: IWidgetPosition) => {
       if (!engineRef.current) return;
       console.log(`操作 widget === ${widget.id}`, newWidgetPos);
-      const tempLayoutWidgets = JSON.parse(JSON.stringify(layoutWidgets)) as IWidget[];
+      const tempLayoutWidgets = layoutWidgets.slice(0);
       const curWidget = tempLayoutWidgets.find((w) => w.id === widget.id) as IWidget;
-      curWidget.x = newWidgetPos.x;
-      curWidget.y = newWidgetPos.y;
+      // curWidget.x = newWidgetPos.x;
+      // curWidget.y = newWidgetPos.y;
       curWidget.w = newWidgetPos.w;
       curWidget.h = newWidgetPos.h;
       setActiveWidget(curWidget);
-      const newLayoutWidgets = engineRef.current.batchUpdate(tempLayoutWidgets);
+      const newLayoutWidgets = engineRef.current.batchUpdate(tempLayoutWidgets, curWidget.id);
       setLayoutWidgets(newLayoutWidgets);
     },
     [layoutWidgets],
@@ -118,7 +119,6 @@ const Layout: React.FC<ILayoutProps> = (props) => {
    * 根据 props 和布局框架 size 变动，更新子节点
    */
   const [clonedChildren, setClonedChildren] = React.useState<React.ReactElement<IWidgetProps>[]>([]);
-  const [layoutData, setLayoutData] = React.useState<ILayoutData>();
   React.useEffect(() => {
     const tempList: Array<{
       id: string;

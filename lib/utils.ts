@@ -1,4 +1,4 @@
-import type { IActionOffset } from './types';
+import type { IActionOffset, IWidget } from './types';
 
 export const Manager = {
   mouseHandled: false,
@@ -50,4 +50,12 @@ export function addStyles(el: HTMLElement, styles: Partial<CSSStyleDeclaration>)
   for (const key in allStyle) {
     el.style[key] = allStyle[key];
   }
+}
+
+export function sort(widgets: IWidget[], dir: 1 | -1 = 1) {
+  const cols = widgets.reduce((col, w) => Math.max(w.x + w.w, col), 0);
+  if (dir === -1) {
+    return widgets.sort((a, b) => (b.x ?? 1000) + (b.y ?? 1000) * cols - ((a.x ?? 1000) + (a.y ?? 1000) * cols));
+  }
+  return widgets.sort((b, a) => (b.x ?? 1000) + (b.y ?? 1000) * cols - ((a.x ?? 1000) + (a.y ?? 1000) * cols));
 }

@@ -37,8 +37,6 @@ function useWidget(options: Options) {
   React.useEffect(() => {
     if (!widget || !layoutData) return;
     const { rowHeight, colWidth } = layoutData;
-    console.log(widget);
-    // const uint = 100 / cols;
     setWidgetRect({
       left: widget.x * colWidth,
       top: widget.y * rowHeight,

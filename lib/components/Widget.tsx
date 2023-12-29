@@ -114,14 +114,14 @@ const Widget: React.FC<IWidgetProps> = (props) => {
     let newX = Math.round((left - layoutLeft) / colWidth);
     let newY = Math.round((top - layoutTop) / rowHeight);
     // 获取新的宽高，并限制在 maxW 和 maxH 之内
-    let newW = clamp(Math.round(width / colWidth), widget.minW ?? 1, widget.maxW ?? cols - 1);
+    let newW = clamp(Math.round(width / colWidth), widget.minW ?? 1, widget.maxW ?? cols);
     let newH = clamp(Math.round(height / rowHeight), widget.minH ?? 1, widget.maxH ?? Infinity);
     if (newX + newW > cols - 1) {
       // 限制大小不能在拖拽时超出容器右边
-      if (newW === widget?.w) {
-        newX = cols - newW;
-      } else {
+      if (newX === widget.x) {
         newW = cols - newX;
+      } else {
+        newX = cols - newW;
       }
     }
     if (newX <= 0) newX = 0;
@@ -246,6 +246,7 @@ const Widget: React.FC<IWidgetProps> = (props) => {
     [dragMouseMove, dragMouseUp],
   );
   // 开启拖拽
+  const dragEnabledRef = React.useRef<boolean>(false);
   const enableDraggable = React.useCallback(() => {
     if (dragElRef.current) return;
     if (!draggableHandle) dragElRef.current = widgetRef.current as HTMLElement;
@@ -253,22 +254,28 @@ const Widget: React.FC<IWidgetProps> = (props) => {
       const el = (widgetRef.current as HTMLDivElement).querySelector(draggableHandle);
       dragElRef.current = el ? (el as HTMLElement) : widgetRef.current;
     }
+    console.log('【enableDrag】');
     dragElRef.current?.addEventListener('mousedown', dragMouseDown);
+    dragEnabledRef.current = true;
   }, [dragMouseDown, draggableHandle]);
   // 关闭拖拽
   const diableDraggable = React.useCallback(() => {
     if (!dragElRef.current) return;
+    console.log('【disableDrag】');
     dragElRef.current.removeEventListener('mousedown', dragMouseDown);
     dragElRef.current = null;
+    dragEnabledRef.current = false;
   }, [dragMouseDown]);
   // 判断开启和关闭的时机
   React.useEffect(() => {
     if (!layoutData?.width || !widget) return;
-    if (widget.static || widget.isDraggable === false) {
+    if ((widget.static || widget.isDraggable === false) && dragEnabledRef.current) {
       diableDraggable();
       return;
     }
-    enableDraggable();
+    if (!dragEnabledRef.current) {
+      enableDraggable();
+    }
   }, [diableDraggable, enableDraggable, layoutData, widget]);
 
   // ========================
@@ -286,7 +293,7 @@ const Widget: React.FC<IWidgetProps> = (props) => {
       const offsetHeight = e.clientY - clientY;
       widgetRef.current.style.left = `${left}px`;
       widgetRef.current.style.top = `${top}px`;
-      const newWidth = clamp(width + offsetWidth, layoutData?.colWidth || 0, layoutData?.width || Infinity);
+      const newWidth = clamp(width + offsetWidth, layoutData?.colWidth || 0, Infinity);
       const newHeight = clamp(height + offsetHeight, layoutData?.rowHeight || 0, Infinity);
       widgetRef.current.style.width = `${newWidth}px`;
       widgetRef.current.style.height = `${newHeight}px`;
@@ -361,24 +368,31 @@ const Widget: React.FC<IWidgetProps> = (props) => {
     [resizeMouseMove, resizeMouseUp],
   );
   // 开启 resize
+  const resizeEnabledRef = React.useRef<boolean>(false);
   const enableResizable = React.useCallback(() => {
-    console.log('enableResizable');
+    console.log('【enableResize】');
+    if (!resizeElRef.current) return;
     resizeElRef.current!.addEventListener('mousedown', resizeMouseDown);
+    resizeEnabledRef.current = true;
   }, [resizeMouseDown]);
   // 关闭 resize
   const disableResizable = React.useCallback(() => {
     if (!resizeElRef.current) return;
+    console.log('【disableResize】');
     resizeElRef.current.removeEventListener('mousedown', resizeMouseDown);
     resizeElRef.current = null;
+    resizeEnabledRef.current = false;
   }, [resizeMouseDown]);
   // 判断开启和关闭 resize 的时机
   React.useEffect(() => {
     if (!layoutData?.width || !widget) return;
-    if (widget.static || widget.isResizeable === false) {
+    if ((widget.static || widget.isResizeable === false) && resizeEnabledRef.current) {
       disableResizable();
       return;
     }
-    enableResizable();
+    if (!resizeEnabledRef.current) {
+      enableResizable();
+    }
   }, [disableResizable, enableResizable, layoutData, widget]);
 
   // ========================
