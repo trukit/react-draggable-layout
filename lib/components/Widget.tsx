@@ -10,6 +10,7 @@ const Wrapper = styled.div`
   transition: none;
   border-color: transparent;
   border-style: solid;
+  transition: left 0.3s, top 0.3s, width 0.3s, height 0.3s;
   &.dragging,
   &.dragending,
   &.resizing,
@@ -85,7 +86,7 @@ export interface IWidgetProps {
   resizeableHandle?: string;
   layoutData?: ILayoutData;
   onActionStart?: (widget: IWidget) => void;
-  onActionDoing?: (widget: IWidget, newWidgetPos: IWidgetPosition) => void;
+  onActionDoing?: (widget: IWidget, newWidgetPos: IWidgetPosition, eventType: 'drag' | 'resize') => void;
   onActionEnd?: (widget: IWidget) => void;
 }
 
@@ -143,14 +144,17 @@ const Widget: React.FC<IWidgetProps> = (props) => {
     actionStartRef.current = handleActionStart;
   }, [handleActionStart]);
 
-  const actionDoingRef = React.useRef<() => void>();
-  const handleActionDoing = React.useCallback(() => {
-    if (!widget) return;
-    const widgetPos = calcNewWidgetPosition();
-    if (widgetPos) {
-      onActionDoing?.(widget, widgetPos);
-    }
-  }, [calcNewWidgetPosition, onActionDoing, widget]);
+  const actionDoingRef = React.useRef<(type: 'drag' | 'resize') => void>();
+  const handleActionDoing = React.useCallback(
+    (type: 'drag' | 'resize') => {
+      if (!widget) return;
+      const widgetPos = calcNewWidgetPosition();
+      if (widgetPos) {
+        onActionDoing?.(widget, widgetPos, type);
+      }
+    },
+    [calcNewWidgetPosition, onActionDoing, widget],
+  );
   React.useEffect(() => {
     actionDoingRef.current = handleActionDoing;
   }, [handleActionDoing]);
@@ -184,7 +188,7 @@ const Widget: React.FC<IWidgetProps> = (props) => {
       if (Manager.isDragging) {
         console.log('dragging');
         dragFollow(e);
-        actionDoingRef.current?.();
+        actionDoingRef.current?.('drag');
       } else if (Math.abs(e.x - s.x) + Math.abs(e.y - s.y) > 3) {
         console.log('dragging start');
         Manager.isDragging = true;
@@ -269,11 +273,11 @@ const Widget: React.FC<IWidgetProps> = (props) => {
   // 判断开启和关闭的时机
   React.useEffect(() => {
     if (!layoutData?.width || !widget) return;
-    if ((widget.static || widget.isDraggable === false) && dragEnabledRef.current) {
+    if ((widget.static || widget.noDrag) && dragEnabledRef.current) {
       diableDraggable();
       return;
     }
-    if (!dragEnabledRef.current) {
+    if (!widget.static && !widget.noDrag && !dragEnabledRef.current) {
       enableDraggable();
     }
   }, [diableDraggable, enableDraggable, layoutData, widget]);
@@ -306,7 +310,7 @@ const Widget: React.FC<IWidgetProps> = (props) => {
       if (Manager.isReszing) {
         console.log('resizing');
         resizeFollow(e);
-        actionDoingRef.current?.();
+        actionDoingRef.current?.('resize');
       } else if (Math.abs(e.x - s.x) + Math.abs(e.y - s.y) > 3) {
         console.log('resize start');
         Manager.isReszing = true;
@@ -386,11 +390,11 @@ const Widget: React.FC<IWidgetProps> = (props) => {
   // 判断开启和关闭 resize 的时机
   React.useEffect(() => {
     if (!layoutData?.width || !widget) return;
-    if ((widget.static || widget.isResizeable === false) && resizeEnabledRef.current) {
+    if ((widget.static || widget.noResize) && resizeEnabledRef.current) {
       disableResizable();
       return;
     }
-    if (!resizeEnabledRef.current) {
+    if (!widget.static && !widget.noResize && !resizeEnabledRef.current) {
       enableResizable();
     }
   }, [disableResizable, enableResizable, layoutData, widget]);
@@ -407,6 +411,7 @@ const Widget: React.FC<IWidgetProps> = (props) => {
     if (isResizeEnding) {
       setIsResizeEnding(false);
     }
+    setTimeout(() => (widgetRef.current!.style.transition = ''), 50);
   }, [isDragEnding, isResizeEnding]);
   const widgetRect = useWidget({
     widget,
@@ -451,7 +456,7 @@ const Widget: React.FC<IWidgetProps> = (props) => {
       onTransitionEnd={handleTransitionEnd}
     >
       <div className={className}>{children}</div>
-      {!resizeableHandle && !widget?.static && widget?.isResizeable !== false && (
+      {!resizeableHandle && !widget?.static && !widget?.noResize && (
         <ResizeArrow className="default_resize" ref={resizeElRef as React.Ref<SVGSVGElement>} />
       )}
     </Wrapper>

@@ -24,13 +24,27 @@ export interface IWidget extends IWidgetPosition {
   maxW?: number;
   minH?: number;
   maxH?: number;
-  /** 为 true，优先级高于 isDraggable 和 isResizeable，不能拖拽和改变大小 */
+  /** 为 true，不能拖拽和改变大小 */
   static?: boolean;
-  isDraggable?: boolean;
-  isResizeable?: boolean;
-  /** 正在拖拽或 resize */
-  _actioning?: boolean;
-  _skipDown?: boolean;
+  /** 为 true，不能拖拽 */
+  noDrag?: boolean;
+  /** 为 true，不能缩放 */
+  noResize?: boolean;
+  autoPosition?: boolean;
+}
+
+export interface IGridNode extends IWidget {
+  _dirty?: boolean;
+  _updating?: boolean;
+  _origX?: number;
+  _origY?: number;
+  _packY?: number;
+  _origW?: number;
+  _origH?: number;
+  _lastTriedX?: number;
+  _lastTriedY?: number;
+  _lastTriedWidth?: number;
+  _lastTriedHeight?: number;
 }
 
 export interface ISize {
