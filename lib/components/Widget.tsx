@@ -179,6 +179,7 @@ const Widget: React.FC<IWidgetProps> = (props) => {
     const { offsetLeft, offsetTop } = actionOffsetRef.current;
     widgetRef.current.style.left = `${e.clientX + offsetLeft}px`;
     widgetRef.current.style.top = `${e.clientY + offsetTop}px`;
+    widgetRef.current.style.transition = 'none';
   }, []);
   // 鼠标移动
   const dragMouseMove = React.useCallback(
@@ -301,6 +302,7 @@ const Widget: React.FC<IWidgetProps> = (props) => {
       const newHeight = clamp(height + offsetHeight, layoutData?.rowHeight || 0, Infinity);
       widgetRef.current.style.width = `${newWidth}px`;
       widgetRef.current.style.height = `${newHeight}px`;
+      widgetRef.current.style.transition = 'none';
     },
     [layoutData],
   );

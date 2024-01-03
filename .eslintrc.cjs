@@ -8,5 +8,6 @@ module.exports = getESLintConfig('react-ts', {
     'no-console': 'off',
     'max-lines': 'off',
     'id-length': 'off',
+    'no-negated-condition:': 'off',
   },
 });
