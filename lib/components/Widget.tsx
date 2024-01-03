@@ -1,5 +1,5 @@
 import * as React from 'react';
-import type { IActionOffset, ILayoutData, IWidget, IWidgetPosition } from '../types';
+import type { IActionOffset, IBoxPosition, ILayoutData, IWidget, IWidgetPosition } from '../types';
 import styled from 'styled-components';
 import { Manager, MouseDownIgnore, clamp, cls, getActionOffset } from '../utils';
 import useWidget from '../hooks/useWidget';
@@ -85,9 +85,14 @@ export interface IWidgetProps {
   draggableHandle?: string;
   resizeableHandle?: string;
   layoutData?: ILayoutData;
-  onActionStart?: (widget: IWidget) => void;
-  onActionDoing?: (widget: IWidget, newWidgetPos: IWidgetPosition, eventType: 'drag' | 'resize') => void;
-  onActionEnd?: (widget: IWidget) => void;
+  onActionStart?: (widget: IWidget, eventType: 'drag' | 'resize') => void;
+  onActionDoing?: (
+    widget: IWidget,
+    newWidgetPos: IWidgetPosition,
+    newBoxPos: IBoxPosition,
+    eventType: 'drag' | 'resize',
+  ) => void;
+  onActionEnd?: (widget: IWidget, eventType: 'drag' | 'resize') => void;
 }
 
 const Widget: React.FC<IWidgetProps> = (props) => {
@@ -107,7 +112,7 @@ const Widget: React.FC<IWidgetProps> = (props) => {
   const mouseDownEventRef = React.useRef<MouseEvent | null>(null);
   const actionOffsetRef = React.useRef<IActionOffset | null>(null);
 
-  const calcNewWidgetPosition = React.useCallback<() => IWidgetPosition | undefined>(() => {
+  const calcNewPosition = React.useCallback<() => [IWidgetPosition, IBoxPosition] | undefined>(() => {
     if (!widgetRef.current || !actionOffsetRef.current || !layoutData || !widget) return;
     const { colWidth, rowHeight, cols } = layoutData;
     const { layoutLeft, layoutTop } = actionOffsetRef.current;
@@ -127,19 +132,30 @@ const Widget: React.FC<IWidgetProps> = (props) => {
     }
     if (newX <= 0) newX = 0;
     if (newY <= 0) newY = 0;
-    return {
-      x: newX,
-      y: newY,
-      w: newW,
-      h: newH,
-    };
+    return [
+      {
+        x: newX,
+        y: newY,
+        w: newW,
+        h: newH,
+      },
+      {
+        left: left - layoutLeft,
+        top: top - layoutTop,
+        width,
+        height,
+      },
+    ];
   }, [layoutData, widget]);
 
-  const actionStartRef = React.useRef<() => void>();
-  const handleActionStart = React.useCallback(() => {
-    if (!widget) return;
-    onActionStart?.(widget);
-  }, [onActionStart, widget]);
+  const actionStartRef = React.useRef<(type: 'drag' | 'resize') => void>();
+  const handleActionStart = React.useCallback(
+    (type: 'drag' | 'resize') => {
+      if (!widget) return;
+      onActionStart?.(widget, type);
+    },
+    [onActionStart, widget],
+  );
   React.useEffect(() => {
     actionStartRef.current = handleActionStart;
   }, [handleActionStart]);
@@ -148,23 +164,28 @@ const Widget: React.FC<IWidgetProps> = (props) => {
   const handleActionDoing = React.useCallback(
     (type: 'drag' | 'resize') => {
       if (!widget) return;
-      const widgetPos = calcNewWidgetPosition();
-      if (widgetPos) {
-        onActionDoing?.(widget, widgetPos, type);
+      const res = calcNewPosition();
+      if (res) {
+        onActionDoing?.(widget, res[0], res[1], type);
       }
     },
-    [calcNewWidgetPosition, onActionDoing, widget],
+    [calcNewPosition, onActionDoing, widget],
   );
   React.useEffect(() => {
+    // console.log('handleActionDoing');
     actionDoingRef.current = handleActionDoing;
   }, [handleActionDoing]);
 
-  const actionEndRef = React.useRef<() => void>();
-  const handleActionEnd = React.useCallback(() => {
-    if (!widget) return;
-    onActionEnd?.(widget);
-  }, [onActionEnd, widget]);
+  const actionEndRef = React.useRef<(type: 'drag' | 'resize') => void>();
+  const handleActionEnd = React.useCallback(
+    (type: 'drag' | 'resize') => {
+      if (!widget) return;
+      onActionEnd?.(widget, type);
+    },
+    [onActionEnd, widget],
+  );
   React.useEffect(() => {
+    // console.log('handleActionEnd');
     actionEndRef.current = handleActionEnd;
   }, [handleActionEnd]);
 
@@ -205,7 +226,7 @@ const Widget: React.FC<IWidgetProps> = (props) => {
         widgetRef.current!.style.position = 'fixed';
         dragFollow(e);
         setIsDragging(true);
-        actionStartRef.current?.();
+        actionStartRef.current?.('drag');
       }
     },
     [dragFollow, id],
@@ -224,7 +245,7 @@ const Widget: React.FC<IWidgetProps> = (props) => {
         setIsDragEnding(true);
         widgetRef.current!.style.transition = '';
         widgetRef.current!.style.position = '';
-        actionEndRef.current?.();
+        actionEndRef.current?.('drag');
       }
       mouseDownEventRef.current = null;
       Manager.dragWidgetId = '';
@@ -328,7 +349,7 @@ const Widget: React.FC<IWidgetProps> = (props) => {
         widgetRef.current!.style.position = 'fixed';
         resizeFollow(e);
         setIsResizing(true);
-        actionStartRef.current?.();
+        actionStartRef.current?.('resize');
       }
     },
     [id, resizeFollow],
@@ -347,7 +368,7 @@ const Widget: React.FC<IWidgetProps> = (props) => {
         setIsResizeEnding(true);
         widgetRef.current!.style.transition = '';
         widgetRef.current!.style.position = '';
-        actionEndRef.current?.();
+        actionEndRef.current?.('resize');
       }
       mouseDownEventRef.current = null;
       Manager.resizeWidgetId = '';
@@ -406,14 +427,16 @@ const Widget: React.FC<IWidgetProps> = (props) => {
   // ========================
   const isPlaceholder = React.useMemo<boolean>(() => isDragging || isResizing, [isDragging, isResizing]);
   const handleTransitionEnd = React.useCallback(() => {
-    widgetRef.current!.style.transition = 'none';
     if (isDragEnding) {
       setIsDragEnding(false);
     }
     if (isResizeEnding) {
       setIsResizeEnding(false);
     }
-    setTimeout(() => (widgetRef.current!.style.transition = ''), 50);
+    if (isDragEnding || isResizeEnding) {
+      widgetRef.current!.style.transition = 'none';
+      setTimeout(() => (widgetRef.current!.style.transition = ''), 30);
+    }
   }, [isDragEnding, isResizeEnding]);
   const widgetRect = useWidget({
     widget,

@@ -19,7 +19,7 @@ export interface IWidgetPosition {
 }
 
 export interface IWidget extends IWidgetPosition {
-  id: string;
+  id?: string;
   minW?: number;
   maxW?: number;
   minH?: number;
@@ -36,25 +36,21 @@ export interface IWidget extends IWidgetPosition {
 export interface IGridNode extends IWidget {
   _dirty?: boolean;
   _updating?: boolean;
-  _origX?: number;
-  _origY?: number;
+  _moving?: boolean;
+  _orig?: IWidgetPosition;
+  _rect?: IBoxPosition;
   _packY?: number;
-  _origW?: number;
-  _origH?: number;
-  _lastTriedX?: number;
-  _lastTriedY?: number;
-  _lastTriedWidth?: number;
-  _lastTriedHeight?: number;
-}
-
-export interface ISize {
-  width: number;
-  height: number;
+  /** @internal true if we jumped down past item below (one time jump so we don't have to totally pass it) */
+  _skipDown?: boolean;
+  /** @internal set on the item being dragged/resized remember the last positions we've tried (but failed) so we don't try again during drag/resize */
+  _lastTried?: IWidgetPosition;
 }
 
 export interface IBoxPosition {
   top: number;
   left: number;
+  width: number;
+  height: number;
 }
 
 export interface IActionOffset {
@@ -66,4 +62,21 @@ export interface IActionOffset {
   height: number;
   layoutLeft: number;
   layoutTop: number;
+}
+
+export interface IGridMoveOpts extends Partial<IWidgetPosition> {
+  /** node to skip collision */
+  skip?: IGridNode;
+  /** do we pack (default true) */
+  pack?: boolean;
+  /** true if we are calling this recursively to prevent simple swap or coverage collision - default false */
+  nested?: boolean;
+  /** position in pixels of the currently dragged items (for overlap check) */
+  rect?: IBoxPosition;
+  /** true if we're live resizing */
+  resizing?: boolean;
+  /** best node (most coverage) we collied with */
+  collide?: IGridNode;
+  /** for collision check even if we don't move */
+  forceCollide?: boolean;
 }

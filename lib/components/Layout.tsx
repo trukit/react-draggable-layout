@@ -1,10 +1,10 @@
 import * as React from 'react';
-import type { ILayoutData, IWidget, IWidgetPosition } from '../types';
+import type { IBoxPosition, ILayoutData, IWidget, IWidgetPosition } from '../types';
 import styled from 'styled-components';
 import { IWidgetProps } from './Widget';
 import useSize from '../hooks/useSize';
 import Placeholder from './Placeholder';
-import { GridLayoutEngine } from '../engine';
+import { GridLayoutEngine } from '../engine-new';
 
 const Wrapper = styled.div`
   position: relative;
@@ -43,7 +43,7 @@ const Layout: React.FC<ILayoutProps> = (props) => {
 
   // 布局更新与 Placeholder
   const engineRef = React.useRef<GridLayoutEngine | null>(null);
-  const [activeWidgetId, setActiveWidgetId] = React.useState<string>('');
+  const [activeWidgetId, setActiveWidgetId] = React.useState<string>();
   const [activeWidget, setActiveWidget] = React.useState<IWidget>();
   // 根据 widgets 组件数组，实例化布局引擎
   React.useEffect(() => {
@@ -52,14 +52,20 @@ const Layout: React.FC<ILayoutProps> = (props) => {
         widgets.map((w) => GridLayoutEngine.widget2GridNode(w)),
         layoutData.cols,
       );
-      engineRef.current.saveInitial();
+      // engineRef.current.saveInitial();
     }
     return () => {
       engineRef.current = null;
     };
+    // 只有当 cols 数目和 widgets 数组改变时，才重新实例化布局引擎
   }, [layoutData?.cols, widgets]);
+  React.useEffect(() => {
+    if (engineRef.current && layoutData) {
+      engineRef.current.setLayoutData(layoutData);
+    }
+  }, [layoutData]);
 
-  const handleActionStart = React.useCallback((widget: IWidget) => {
+  const handleActionStart = React.useCallback((widget: IWidget, eventType: 'drag' | 'resize') => {
     setActiveWidgetId(widget.id);
     setActiveWidget(widget);
     const engine = engineRef.current;
@@ -67,43 +73,71 @@ const Layout: React.FC<ILayoutProps> = (props) => {
     console.log('start', engine.nodes);
     const node = engine.nodes.find((n) => n.id === widget.id);
     if (node) {
-      engine.cleanNodes();
-      engine.beginUpdate(node);
+      engine.cleanNodes().beginUpdate(node);
+      node._moving = eventType === 'drag';
+      delete node._lastTried;
+      engine.cacheRects();
     }
   }, []);
 
   const handleActionDoing = React.useCallback(
-    (widget: IWidget, newWidgetPos: IWidgetPosition, eventType: 'drag' | 'resize') => {
+    (widget: IWidget, newWidgetPos: IWidgetPosition, newBoxPos: IBoxPosition, eventType: 'drag' | 'resize') => {
       if (!engineRef.current) return;
       console.log(`操作 widget === ${widget.id}`, newWidgetPos);
       const tempLayoutWidgets = layoutWidgets.slice(0);
       const curWidget = tempLayoutWidgets.find((w) => w.id === widget.id) as IWidget;
-      // curWidget.x = newWidgetPos.x;
-      // curWidget.y = newWidgetPos.y;
       curWidget.w = newWidgetPos.w;
       curWidget.h = newWidgetPos.h;
       setActiveWidget(curWidget);
-      // setLayoutWidgets(tempLayoutWidgets);
+
       const engine = engineRef.current;
       if (!engine) return;
+
       const node = engine.nodes.find((n) => n.id === widget.id);
       if (!node) return;
-      engine.moveNode(node, newWidgetPos.x, newWidgetPos.y, newWidgetPos.w, newWidgetPos.h);
-      setLayoutWidgets(engine.save());
+
+      let resizing = false;
+      if (eventType === 'drag') {
+        if (node.x === newWidgetPos.x && node.y === newWidgetPos.y) return;
+      } else if (eventType === 'resize') {
+        if (node.w === newWidgetPos.w && node.h === newWidgetPos.h) return;
+        if (node._lastTried && node._lastTried.w === newWidgetPos.w && node._lastTried.h === newWidgetPos.h) return;
+        resizing = true;
+      }
+      node._lastTried = newWidgetPos;
+      if (
+        engine.moveNodeCheck(node, {
+          ...newWidgetPos,
+          rect: {
+            ...newBoxPos,
+          },
+          resizing,
+        })
+      ) {
+        engine.cacheRects();
+        delete node._skipDown;
+      }
+      setLayoutWidgets(engine.getWidgets());
     },
     [layoutWidgets],
   );
 
   const handleActionEnd = React.useCallback(
     (widget: IWidget) => {
-      console.log('layout handleActionEnd', widget, activeWidgetId);
+      console.log('engine = layout handleActionEnd');
       if (widget.id !== activeWidgetId) return;
       setActiveWidgetId('');
       setActiveWidget(undefined);
       const engine = engineRef.current;
       if (!engine) return;
+      const node = engine.nodes.find((n) => n.id === widget.id);
+      if (node) {
+        delete node._moving;
+        delete node._lastTried;
+      }
+
       engine.endUpdate();
-      setLayoutWidgets(engine.save());
+      setLayoutWidgets(engine.getWidgets());
     },
     [activeWidgetId],
   );
