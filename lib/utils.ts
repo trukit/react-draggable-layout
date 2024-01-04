@@ -45,13 +45,6 @@ export function getActionOffset(e: MouseEvent, widget: HTMLElement, layout: HTML
   return result;
 }
 
-export function addStyles(el: HTMLElement, styles: Partial<CSSStyleDeclaration>) {
-  const allStyle = styles as CSSStyleDeclaration;
-  for (const key in allStyle) {
-    el.style[key] = allStyle[key];
-  }
-}
-
 export function sort(nodes: IGridNode[], dir?: -1 | 1, column?: number): IGridNode[] {
   if (!column) {
     let widths = nodes.map((n) => (n.x ?? 0) + (n.w || 1));
@@ -70,12 +63,7 @@ export function defaults(target: any, ...sources: any[]) {
       }
     }
   });
-
   return target;
-}
-
-export function cloneNode(taget: IGridNode): IGridNode {
-  return { ...taget };
 }
 
 export function copyPos(a: IWidget | any, b: IWidget, doMinMax = false): IWidget {
@@ -113,5 +101,72 @@ export function sanitizeMinMax(node: IGridNode) {
   }
   if (!node.maxH) {
     delete node.maxH;
+  }
+}
+
+export function getScrollElement(el?: HTMLElement | null): HTMLElement {
+  if (!el) return (document.scrollingElement as HTMLElement) || document.documentElement;
+  const style = getComputedStyle(el);
+  const overflowRegex = /(auto|scroll)/;
+
+  if (overflowRegex.test(style.overflow + style.overflowY)) {
+    return el;
+  } else {
+    return getScrollElement(el.parentElement);
+  }
+}
+
+export function updateScrollPosition(el: HTMLElement, position: { top: number }, distance: number): void {
+  // is widget in view?
+  let rect = el.getBoundingClientRect();
+  let innerHeightOrClientHeight = window.innerHeight || document.documentElement.clientHeight;
+  if (rect.top < 0 || rect.bottom > innerHeightOrClientHeight) {
+    // set scrollTop of first parent that scrolls
+    // if parent is larger than el, set as low as possible
+    // to get entire widget on screen
+    let offsetDiffDown = rect.bottom - innerHeightOrClientHeight;
+    let offsetDiffUp = rect.top;
+    let scrollEl = getScrollElement(el);
+    if (scrollEl !== null) {
+      let prevScroll = scrollEl.scrollTop;
+      if (rect.top < 0 && distance < 0) {
+        // moving up
+        if (el.offsetHeight > innerHeightOrClientHeight) {
+          scrollEl.scrollTop += distance;
+        } else {
+          scrollEl.scrollTop += Math.abs(offsetDiffUp) > Math.abs(distance) ? distance : offsetDiffUp;
+        }
+      } else if (distance > 0) {
+        // moving down
+        if (el.offsetHeight > innerHeightOrClientHeight) {
+          scrollEl.scrollTop += distance;
+        } else {
+          scrollEl.scrollTop += offsetDiffDown > distance ? distance : offsetDiffDown;
+        }
+      }
+      // move widget y by amount scrolled
+      position.top += scrollEl.scrollTop - prevScroll;
+    }
+  }
+}
+
+export function updateScrollResize(event: MouseEvent, el: HTMLElement, distance: number): void {
+  const scrollEl = getScrollElement(el);
+  const height = scrollEl.clientHeight;
+  // #1727 event.clientY is relative to viewport, so must compare this against position of scrollEl getBoundingClientRect().top
+  // #1745 Special situation if scrollEl is document 'html': here browser spec states that
+  // clientHeight is height of viewport, but getBoundingClientRect() is rectangle of html element;
+  // this discrepancy arises because in reality scrollbar is attached to viewport, not html element itself.
+  const offsetTop = scrollEl === getScrollElement() ? 0 : scrollEl.getBoundingClientRect().top;
+  const pointerPosY = event.clientY - offsetTop;
+  const top = pointerPosY < distance;
+  const bottom = pointerPosY > height - distance;
+
+  if (top) {
+    // This also can be done with a timeout to keep scrolling while the mouse is
+    // in the scrolling zone. (will have smoother behavior)
+    scrollEl.scrollBy({ behavior: 'smooth', top: pointerPosY - distance });
+  } else if (bottom) {
+    scrollEl.scrollBy({ behavior: 'smooth', top: distance - (height - pointerPosY) });
   }
 }

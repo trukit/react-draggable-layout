@@ -45,10 +45,9 @@ export interface IGridNode extends IWidget {
   _orig?: IWidgetPosition;
   _rect?: IBoxPosition;
   _packY?: number;
-  /** @internal true if we jumped down past item below (one time jump so we don't have to totally pass it) */
   _skipDown?: boolean;
-  /** @internal set on the item being dragged/resized remember the last positions we've tried (but failed) so we don't try again during drag/resize */
   _lastTried?: IWidgetPosition;
+  _prevYPix?: number;
 }
 
 export interface IBoxPosition {
