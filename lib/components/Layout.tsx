@@ -1,5 +1,5 @@
 import * as React from 'react';
-import type { IBoxPosition, ILayoutData, ISize, IWidget, IWidgetPosition } from '../types';
+import type { IBoxPosition, ILayoutData, ISize, IWidget } from '../types';
 import styled from 'styled-components';
 import { IWidgetProps } from './Widget';
 import useSize from '../hooks/useSize';
@@ -46,6 +46,26 @@ const Layout: React.FC<ILayoutProps> = (props) => {
     setLayoutWidgets(widgets);
   }, [widgets]);
 
+  const size = useSize(layoutRef);
+  React.useEffect(() => {
+    if (size && onSizeChange) {
+      onSizeChange(size);
+    }
+  }, [onSizeChange, size]);
+  const colWidth = React.useMemo<number>(() => {
+    if (!size || !layoutRef.current) return 0;
+    return size.width / col;
+  }, [col, size]);
+  const rowHeight = React.useMemo<number>(() => {
+    if (!propsRowHieght) return colWidth;
+    if (typeof propsRowHieght === 'number') return gap ? propsRowHieght * colWidth + gap[1] : propsRowHieght * colWidth;
+    if (typeof propsRowHieght === 'string') {
+      const height = parseFloat(propsRowHieght);
+      return gap ? height + gap[1] : height;
+    }
+    return 0;
+  }, [colWidth, gap, propsRowHieght]);
+
   // 布局更新与 Placeholder
   const engineRef = React.useRef<GridLayoutEngine | null>(null);
   const [activeWidgetId, setActiveWidgetId] = React.useState<string>();
@@ -90,9 +110,8 @@ const Layout: React.FC<ILayoutProps> = (props) => {
   }, []);
 
   const handleActionDoing = React.useCallback(
-    (widget: IWidget, newWidgetPos: IWidgetPosition, newBoxPos: IBoxPosition, eventType: 'drag' | 'resize') => {
+    (widget: IWidget, newBoxPos: IBoxPosition, eventType: 'drag' | 'resize') => {
       if (!engineRef.current) return;
-      console.log(`操作 widget === ${widget.id}`, newWidgetPos);
       const tempLayoutWidgets = layoutWidgets.slice(0);
       const curWidget = tempLayoutWidgets.find((w) => w.id === widget.id) as IWidget;
       setActiveWidget(curWidget);
@@ -101,20 +120,25 @@ const Layout: React.FC<ILayoutProps> = (props) => {
       if (!engine) return;
 
       const node = engine.nodes.find((n) => n.id === widget.id);
-      if (!node) return;
+      if (!node || !node._orig) return; // 在 engine 的  saveInitial 中已经存入 _orig，也就是在 handleActionStart 已执行完
 
+      let p = { ...node._orig };
       let resizing = false;
       if (eventType === 'drag') {
-        if (node.x === newWidgetPos.x && node.y === newWidgetPos.y) return;
+        p.x = Math.round(newBoxPos.left / colWidth);
+        p.y = Math.round(newBoxPos.top / rowHeight);
+        if (node.x === p.x && node.y === p.y) return;
       } else if (eventType === 'resize') {
-        if (node.w === newWidgetPos.w && node.h === newWidgetPos.h) return;
-        if (node._lastTried && node._lastTried.w === newWidgetPos.w && node._lastTried.h === newWidgetPos.h) return;
+        p.w = Math.round(newBoxPos.width / colWidth);
+        p.h = Math.round(newBoxPos.height / rowHeight);
+        if (node.w === p.w && node.h === p.h) return;
+        if (node._lastTried && node._lastTried.w === p.w && node._lastTried.h === p.h) return;
         resizing = true;
       }
-      node._lastTried = newWidgetPos;
+      node._lastTried = p;
       if (
         engine.moveNodeCheck(node, {
-          ...newWidgetPos,
+          ...p,
           rect: {
             ...newBoxPos,
           },
@@ -126,7 +150,7 @@ const Layout: React.FC<ILayoutProps> = (props) => {
       }
       setLayoutWidgets(engine.getWidgets());
     },
-    [layoutWidgets],
+    [colWidth, layoutWidgets, rowHeight],
   );
 
   const handleActionEnd = React.useCallback(
@@ -149,25 +173,6 @@ const Layout: React.FC<ILayoutProps> = (props) => {
     [activeWidgetId],
   );
 
-  const size = useSize(layoutRef);
-  React.useEffect(() => {
-    if (size && onSizeChange) {
-      onSizeChange(size);
-    }
-  }, [onSizeChange, size]);
-  const colWidth = React.useMemo<number>(() => {
-    if (!size || !layoutRef.current) return 0;
-    return size.width / col;
-  }, [col, size]);
-  const rowHeight = React.useMemo<number>(() => {
-    if (!propsRowHieght) return colWidth;
-    if (typeof propsRowHieght === 'number') return gap ? propsRowHieght * colWidth + gap[1] : propsRowHieght * colWidth;
-    if (typeof propsRowHieght === 'string') {
-      const height = parseFloat(propsRowHieght);
-      return gap ? height + gap[1] : height;
-    }
-    return 0;
-  }, [colWidth, gap, propsRowHieght]);
   /**
    * 设置 margin
    */

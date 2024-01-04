@@ -1,5 +1,5 @@
 import * as React from 'react';
-import type { IActionOffset, IBoxPosition, ILayoutData, IWidget, IWidgetPosition } from '../types';
+import type { IActionOffset, IBoxPosition, ILayoutData, IWidget } from '../types';
 import styled from 'styled-components';
 import { Manager, MouseDownIgnore, clamp, cls, getActionOffset } from '../utils';
 import useWidget from '../hooks/useWidget';
@@ -86,12 +86,7 @@ export interface IWidgetProps {
   resizeableHandle?: string;
   layoutData?: ILayoutData;
   onActionStart?: (widget: IWidget, eventType: 'drag' | 'resize') => void;
-  onActionDoing?: (
-    widget: IWidget,
-    newWidgetPos: IWidgetPosition,
-    newBoxPos: IBoxPosition,
-    eventType: 'drag' | 'resize',
-  ) => void;
+  onActionDoing?: (widget: IWidget, newBoxPos: IBoxPosition, eventType: 'drag' | 'resize') => void;
   onActionEnd?: (widget: IWidget, eventType: 'drag' | 'resize') => void;
 }
 
@@ -112,30 +107,16 @@ const Widget: React.FC<IWidgetProps> = (props) => {
   const mouseDownEventRef = React.useRef<MouseEvent | null>(null);
   const actionOffsetRef = React.useRef<IActionOffset | null>(null);
 
-  const calcNewPosition = React.useCallback<() => [IWidgetPosition, IBoxPosition] | undefined>(() => {
+  const calcBoxPosition = React.useCallback<() => IBoxPosition | undefined>(() => {
     if (!widgetRef.current || !actionOffsetRef.current || !layoutData || !widget) return;
-    const { colWidth, rowHeight } = layoutData;
     const { layoutLeft, layoutTop } = actionOffsetRef.current;
     const { left, top, width, height } = widgetRef.current.getBoundingClientRect();
-    let newX = Math.round((left - layoutLeft) / colWidth);
-    let newY = Math.round((top - layoutTop) / rowHeight);
-    // 获取新的宽高，并限制在 maxW 和 maxH 之内
-    let newW = Math.round(width / colWidth);
-    let newH = Math.round(height / rowHeight);
-    return [
-      {
-        x: newX,
-        y: newY,
-        w: newW,
-        h: newH,
-      },
-      {
-        left: left - layoutLeft,
-        top: top - layoutTop,
-        width,
-        height,
-      },
-    ];
+    return {
+      left: left - layoutLeft,
+      top: top - layoutTop,
+      width,
+      height,
+    };
   }, [layoutData, widget]);
 
   const actionStartRef = React.useRef<(type: 'drag' | 'resize') => void>();
@@ -154,12 +135,12 @@ const Widget: React.FC<IWidgetProps> = (props) => {
   const handleActionDoing = React.useCallback(
     (type: 'drag' | 'resize') => {
       if (!widget) return;
-      const res = calcNewPosition();
-      if (res) {
-        onActionDoing?.(widget, res[0], res[1], type);
+      const boxPos = calcBoxPosition();
+      if (boxPos) {
+        onActionDoing?.(widget, boxPos, type);
       }
     },
-    [calcNewPosition, onActionDoing, widget],
+    [calcBoxPosition, onActionDoing, widget],
   );
   React.useEffect(() => {
     // console.log('handleActionDoing');
