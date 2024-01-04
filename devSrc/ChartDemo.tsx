@@ -1,9 +1,9 @@
-import { Layout, Widget } from '../lib';
-// import type { Layouts } from '../lib/types';
+import { BreakLayout, Widget } from '../lib';
 
 import styled from 'styled-components';
+import { IWidget } from '../lib/types';
 
-const LayoutWrapper = styled(Layout)`
+const LayoutWrapper = styled(BreakLayout)`
   background-color: #e2e2e2;
   .box {
     width: 100%;
@@ -39,76 +39,92 @@ const LayoutWrapper = styled(Layout)`
   }
 `;
 
-// const REACT_GRID_LAYOUT_BEDROCK: Layouts = {
-//   lg: [
-//     { key: 'infos', x: 0, y: 0, w: 14, h: 2, minW: 8, minH: 2 },
-//     { key: 'charts', x: 0, y: 2, w: 14, h: 22, minW: 12, minH: 14 },
-//     { key: 'books', x: 14, y: 0, w: 5, h: 24, minW: 5, minH: 22 },
-//     { key: 'orders', x: 0, y: 24, w: 19, h: 20, minW: 10, minH: 8 },
-//     { key: 'panels', x: 19, y: 0, w: 5, h: 24, minW: 5, minH: 18 },
-//     { key: 'details', x: 19, y: 24, w: 5, h: 20, minW: 5, minH: 10 },
-//   ],
-//   md: [
-//     { key: 'infos', x: 0, y: 0, w: 16, h: 2, minW: 6, minH: 2 },
-//     { key: 'charts', x: 0, y: 2, w: 12, h: 20, minW: 10, minH: 14 },
-//     { key: 'books', x: 12, y: 2, w: 4, h: 20, minW: 4, minH: 20 },
-//     { key: 'orders', x: 0, y: 22, w: 16, h: 18, minW: 8, minH: 6 },
-//     { key: 'panels', x: 16, y: 0, w: 4, h: 22, minW: 4, minH: 18 },
-//     { key: 'details', x: 16, y: 22, w: 4, h: 18, minW: 4, minH: 10 },
-//   ],
-// };
+const REACT_GRID_LAYOUT_BEDROCK: Record<string, IWidget[]> = {
+  lg: [
+    { id: 'infos', x: 0, y: 0, w: 14, h: 2, minW: 8, minH: 2 },
+    { id: 'charts', x: 0, y: 3, w: 14, h: 22, minW: 12, minH: 14 },
+    { id: 'books', x: 14, y: 0, w: 5, h: 24, minW: 5, minH: 22 },
+    { id: 'orders', x: 0, y: 22, w: 19, h: 20, minW: 10, minH: 8 },
+    { id: 'panels', x: 19, y: 0, w: 5, h: 24, minW: 5, minH: 18 },
+    { id: 'details', x: 19, y: 0, w: 5, h: 20, minW: 5, minH: 10 },
+  ],
+  md: [
+    { id: 'infos', x: 0, y: 0, w: 12, h: 2, minW: 6, minH: 2 },
+    { id: 'charts', x: 0, y: 3, w: 12, h: 20, minW: 10, minH: 14 },
+    { id: 'books', x: 12, y: 0, w: 4, h: 22, minW: 4, minH: 22 },
+    { id: 'orders', x: 0, y: 22, w: 16, h: 18, minW: 8, minH: 6 },
+    { id: 'panels', x: 16, y: 0, w: 4, h: 22, minW: 4, minH: 18 },
+    { id: 'details', x: 16, y: 0, w: 4, h: 18, minW: 4, minH: 10 },
+  ],
+  sm: [
+    { id: 'infos', x: 0, y: 0, w: 12, h: 2, minW: 6, minH: 2 },
+    { id: 'charts', x: 0, y: 3, w: 12, h: 18, minW: 10, minH: 14 },
+    { id: 'books', x: 12, y: 0, w: 4, h: 20, minW: 4, minH: 20 },
+    { id: 'orders', x: 0, y: 20, w: 16, h: 16, minW: 8, minH: 6 },
+    { id: 'panels', x: 16, y: 0, w: 4, h: 20, minW: 4, minH: 18 },
+    { id: 'details', x: 16, y: 0, w: 4, h: 16, minW: 4, minH: 10 },
+  ],
+  xs: [
+    { id: 'infos', x: 0, y: 0, w: 12, h: 2, minW: 6, minH: 2 },
+    { id: 'charts', x: 0, y: 3, w: 12, h: 18, minW: 10, minH: 14 },
+    { id: 'books', x: 12, y: 0, w: 5, h: 20, minW: 5, minH: 20 },
+    { id: 'orders', x: 0, y: 20, w: 17, h: 16, minW: 8, minH: 6 },
+    { id: 'panels', x: 17, y: 0, w: 5, h: 20, minW: 5, minH: 18 },
+    { id: 'details', x: 17, y: 0, w: 5, h: 16, minW: 5, minH: 10 },
+  ],
+};
 
 function ChartDemo() {
   return (
     <main>
       <h1>ChartLayout Demo</h1>
-      {/* <LayoutWrapper
+      <LayoutWrapper
         className="container"
-        // breakpoints={{ lg: 1200, md: 780 }}
-        cols={20}
+        breakWidgets={REACT_GRID_LAYOUT_BEDROCK}
+        breakPoints={{ lg: 1920, md: 1680, sm: 1440, xs: 1280 }}
+        breakCols={{ lg: 24, md: 20, sm: 20, xs: 22 }}
+        breakGap={[1, 1]}
+        breakRowHeight="34px"
         draggableHandle=".draggable"
-        layouts={REACT_GRID_LAYOUT_BEDROCK}
-        gap={[1, 1]}
-        rowHeight={34}
-        isBounded
+        initCompact
       >
-        <LayoutItem className="box" itemKey="infos">
+        <Widget className="box" id="infos">
           <div className="draggable">
             <hr />
           </div>
           <div>infos</div>
-        </LayoutItem>
-        <LayoutItem className="box" itemKey="charts">
+        </Widget>
+        <Widget className="box" id="charts">
           <div className="draggable">
             <hr />
           </div>
           <div>charts</div>
-        </LayoutItem>
-        <LayoutItem className="box" itemKey="books">
+        </Widget>
+        <Widget className="box" id="books">
           <div className="draggable">
             <hr />
           </div>
           <div>books</div>
-        </LayoutItem>
-        <LayoutItem className="box" itemKey="orders">
+        </Widget>
+        <Widget className="box" id="orders">
           <div className="draggable">
             <hr />
           </div>
           <div>orders</div>
-        </LayoutItem>
-        <LayoutItem className="box" itemKey="panels">
+        </Widget>
+        <Widget className="box" id="panels">
           <div className="draggable">
             <hr />
           </div>
           <div>panels</div>
-        </LayoutItem>
-        <LayoutItem className="box" itemKey="details">
+        </Widget>
+        <Widget className="box" id="details">
           <div className="draggable">
             <hr />
           </div>
           <div>details</div>
-        </LayoutItem>
-      </LayoutWrapper> */}
+        </Widget>
+      </LayoutWrapper>
     </main>
   );
 }

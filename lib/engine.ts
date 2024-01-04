@@ -1,41 +1,26 @@
+/* eslint-disable no-negated-condition */
 /* eslint-disable no-multi-assign */
-import type { IGridNode, IWidget } from './types';
+import type { IBoxPosition, IGridMoveOpts, IGridNode, ILayoutData, IWidget, IWidgetPosition } from './types';
 import * as Utils from './utils';
-
-interface Layout {
-  x: number;
-  y: number;
-  w: number;
-  id: string;
-}
-
-const TEMP_ID = 'rdl-temp-id';
-const EMPTY_ID = '';
-const EMPTY_NODE: IGridNode = {
-  id: '',
-  x: 0,
-  y: 0,
-  w: 1,
-  h: 1,
-};
 
 export type onChangeCB = (nodes: IGridNode[], removeDOM?: boolean) => void;
 
 export class GridLayoutEngine {
+  layoutData?: ILayoutData;
   nodes: IGridNode[];
   column: number;
-  maxRow?: number;
   addedNodes: IGridNode[] = [];
   removedNodes: IGridNode[] = [];
   /** true = 批量更新, false = 单次更新 */
   batchMode: boolean = false;
   onchange?: onChangeCB;
+  static _idSeq = 0;
 
   private _float: boolean;
   private _prevFloat?: boolean;
-  private _layouts?: Array<Layout[] | undefined>;
-  private _ignoreLayoutsNodeChange?: boolean;
-  private static _idSeq = 1;
+  protected _layouts?: IGridNode[][];
+  /** @internal true while we are resizing widgets during column resize to skip certain parts */
+  protected _inColumnResize?: boolean;
   /** 如果布局 widget 中有 static 属性的块，则为 true */
   protected _hasLocked?: boolean;
 
@@ -62,11 +47,30 @@ export class GridLayoutEngine {
     };
   }
 
-  /** 启用/禁用浮动部件（默认：`false） */
+  /**
+   * 创建引擎实例
+   * @param nodes 布局节点数组
+   * @param layoutData 布局容器数据
+   * @param maxRow 最大行数
+   * @param float 是否允许浮动，即任意位置，默认为 false
+   */
+  public constructor(nodes: IGridNode[], column: number, float: boolean = false) {
+    console.log('engine ~ Constructor');
+    this.nodes = nodes;
+    this.column = column;
+    this._float = float;
+  }
+
+  public setLayoutData(layoutData: ILayoutData): GridLayoutEngine {
+    this.layoutData = layoutData;
+    return this;
+  }
+
+  /**
+   * 浮动设置
+   */
   public set float(val: boolean) {
-    if (this._float === val) {
-      return;
-    }
+    if (this._float === val) return;
     this._float = val || false;
     if (!val) {
       this._packNodes();
@@ -76,102 +80,162 @@ export class GridLayoutEngine {
     return this._float || false;
   }
 
-  /**
-   * 创建引擎实例
-   * @param nodes 布局节点数组
-   * @param column 总列数
-   * @param maxRow 最大行数
-   * @param float 时候开启浮动部件，默认为 false
-   */
-  public constructor(nodes: IGridNode[], column: number, maxRow?: number, float: boolean = false) {
-    this.nodes = nodes;
-    this.column = column;
-    this.maxRow = maxRow;
-    this._float = float;
-  }
-
-  public batchUpdate(): GridLayoutEngine {
-    if (this.batchMode) return this;
-    this.batchMode = true;
-    this._prevFloat = this._float;
-    this._float = true; // let things go anywhere for now... commit() will restore and possibly reposition
-    return this;
-  }
-
-  public commit(): GridLayoutEngine {
-    if (!this.batchMode) return this;
-    this.batchMode = false;
-    this._float = !!this._prevFloat;
-    delete this._prevFloat;
-    this._packNodes();
-    return this;
-  }
-
-  /**
-   * 判断某个区域是否是空出来的
-   */
-  public isAreaEmpty(x: number, y: number, width: number, height: number): boolean {
-    let nn: IGridNode = { id: TEMP_ID, x: x || 0, y: y || 0, w: width || 1, h: height || 1 };
-    let collisionNode = this.nodes.find((n) => {
-      return GridLayoutEngine.isCollisions(n, nn);
-    });
-    return !collisionNode;
-  }
-
-  /** 压缩所有块，回收空白空间 */
-  public compact(): GridLayoutEngine {
-    if (this.nodes.length === 0) {
-      return this;
+  public batchUpdate(flag = true, doPack = true): GridLayoutEngine {
+    if (!!this.batchMode === flag) return this;
+    this.batchMode = flag;
+    if (flag) {
+      this._prevFloat = this._float;
+      this._float = true; // let things go anywhere for now... will restore and possibly reposition later
+      this.cleanNodes();
+      this.saveInitial(); // since begin update (which is called multiple times) won't do this
+    } else {
+      this._float = !!this._prevFloat;
+      delete this._prevFloat;
+      if (doPack) this._packNodes();
     }
-    this.batchUpdate();
-    this._sortNodes();
+    return this;
+  }
+
+  /** 删除节点脏污染标识，以及最新一次尝试的位置信息 */
+  public cleanNodes(): GridLayoutEngine {
+    if (this.batchMode) return this;
+    this.nodes.forEach((n) => {
+      delete n._dirty;
+      delete n._lastTried;
+    });
+    return this;
+  }
+
+  /**
+   * 开始更新某个节点
+   * @param node 正在操作的节点
+   * @returns {GridLayoutEngine} this
+   */
+  public beginUpdate(node: IGridNode): GridLayoutEngine {
+    if (!node._updating) {
+      node._updating = true;
+      delete node._skipDown;
+      if (!this.batchMode) this.saveInitial();
+    }
+    return this;
+  }
+
+  /**
+   * 结束本次更新
+   * @returns {GridLayoutEngine} this
+   */
+  public endUpdate(): GridLayoutEngine {
+    let n = this.nodes.find((n) => n._updating);
+    if (n) {
+      delete n._updating;
+      delete n._skipDown;
+    }
+    return this;
+  }
+
+  /**
+   * 保存布局块在操作之前的位置和大小
+   */
+  public saveInitial(): GridLayoutEngine {
+    this.nodes.forEach((n) => {
+      n._orig = Utils.copyPos({}, n);
+      delete n._dirty;
+    });
+    console.log('engine ~ saveInitial', JSON.parse(JSON.stringify(this.nodes)));
+    this._hasLocked = this.nodes.some((n) => n.static);
+    return this;
+  }
+
+  /** @internal restore all the nodes back to initial values (called when we leave) */
+  public restoreInitial(): GridLayoutEngine {
+    this.nodes.forEach((n) => {
+      if (
+        Utils.samePos(n, {
+          x: n._orig?.x ?? n.x,
+          y: n._orig?.y ?? n.y,
+          w: n._orig?.w || n.w,
+          h: n._orig?.h || n.h,
+        })
+      ) {
+        return this;
+      }
+      Utils.copyPos(n, {
+        x: n._orig?.x ?? n.x,
+        y: n._orig?.y ?? n.y,
+        w: n._orig?.w || n.w,
+        h: n._orig?.h || n.h,
+      });
+      n._dirty = true;
+    });
+    return this;
+  }
+
+  /**
+   * 获取布局引擎操作后的布局块数组
+   * @returns {IWidget[]}
+   */
+  public getWidgets(): IWidget[] {
+    this.sortNodes();
+    return this.nodes.map((n) => GridLayoutEngine.gridNode2Widget(n));
+  }
+
+  /**
+   * 重新布局
+   * @param layout 布局方式
+   * @param doSort 是否排序
+   * @returns
+   */
+  public compact(layout: 'compact' | 'list' = 'compact', doSort = true): GridLayoutEngine {
+    if (this.nodes.length === 0) return this;
+    if (doSort) this.sortNodes();
+    const wasBatch = this.batchMode;
+    if (!wasBatch) this.batchUpdate();
+    const wasColumnResize = this._inColumnResize;
+    if (!wasColumnResize) this._inColumnResize = true; // faster addNode()
     let copyNodes = this.nodes;
     this.nodes = []; // pretend we have no nodes to conflict layout to start with...
-    copyNodes.forEach((node) => {
-      if (!node.noDrag && !node.static) {
-        node.autoPosition = true;
+    copyNodes.forEach((n, index, list) => {
+      let after: IGridNode | undefined;
+      if (!n.static) {
+        n.autoPosition = true;
+        if (layout === 'list' && index) after = list[index - 1];
       }
-      this.addNode(node, false); // 'false' for add event trigger
-      node._dirty = true; // force attr update
+      this.addNode(n, false, after); // 'false' for add event trigger
     });
-    this.commit();
+    if (!wasColumnResize) delete this._inColumnResize;
+    if (!wasBatch) this.batchUpdate(false);
     return this;
   }
 
-  /**
-   * 给定一个节点，确保其坐标/值在当前网格中有效
-   * @param node 需调整的节点
-   * @param resizing 如果超出范围，是否缩小尺寸或移动到网格中以适应
-   */
-  public prepareNode(node: IGridNode, resizing?: boolean): IGridNode {
-    node = node || {};
-    // 如果我们缺少位置，网格会自动为我们定位（在我们将它们设置为 0,0 之前）
-    if (node.x === undefined || node.y === undefined || node.x === null || node.y === null) {
-      node.autoPosition = true;
+  /** call to add the given node to our list, fixing collision and re-packing */
+  public addNode(node: IGridNode, triggerAddEvent = false, after?: IGridNode): IGridNode {
+    let dup = this.nodes.find((n) => n.id === node.id);
+    if (dup) return dup; // prevent inserting twice! return it instead.
+
+    // skip prepareNode if we're in middle of column resize (not new) but do check for bounds!
+    this._inColumnResize ? this.nodeBoundFix(node) : this.prepareNode(node);
+
+    let skipCollision = false;
+    if (node.autoPosition && this.findEmptyPosition(node, this.nodes, this.column, after)) {
+      delete node.autoPosition; // found our slot
+      skipCollision = true;
     }
 
-    // 为缺失的必填字段指定默认值
-    let defaults = { w: 1, h: 1, x: 0, y: 0 };
-    node = Utils.defaults(node, defaults);
+    this.nodes.push(node);
+    if (triggerAddEvent) {
+      this.addedNodes.push(node);
+    }
 
-    node.autoPosition = node.autoPosition || false;
-    node.noResize = node.noResize || false;
-    node.noDrag = node.noDrag || false;
+    if (!skipCollision) this._fixCollisions(node);
+    if (!this.batchMode) {
+      this._packNodes();
+    }
+    return node;
+  }
 
-    if (Number.isNaN(node.x)) {
-      node.x = defaults.x;
-      node.autoPosition = true;
-    }
-    if (Number.isNaN(node.y)) {
-      node.y = defaults.y;
-      node.autoPosition = true;
-    }
-    if (Number.isNaN(node.w)) {
-      node.w = defaults.w;
-    }
-    if (Number.isNaN(node.h)) {
-      node.h = defaults.h;
-    }
+  /** part2 of preparing a node to fit inside our grid - checks for x,y,w from grid dimensions */
+  public nodeBoundFix(node: IGridNode, resizing?: boolean): GridLayoutEngine {
+    let before = node._orig || Utils.copyPos({}, node);
 
     if (node.maxW) {
       node.w = Math.min(node.w, node.maxW);
@@ -179,7 +243,7 @@ export class GridLayoutEngine {
     if (node.maxH) {
       node.h = Math.min(node.h, node.maxH);
     }
-    if (node.minW) {
+    if (node.minW && node.minW <= this.column) {
       node.w = Math.max(node.w, node.minW);
     }
     if (node.minH) {
@@ -192,9 +256,7 @@ export class GridLayoutEngine {
       node.w = 1;
     }
 
-    if (this.maxRow && node.h > this.maxRow) {
-      node.h = this.maxRow;
-    } else if (node.h < 1) {
+    if (node.h < 1) {
       node.h = 1;
     }
 
@@ -212,540 +274,437 @@ export class GridLayoutEngine {
         node.x = this.column - node.w;
       }
     }
-    if (this.maxRow && node.y + node.h > this.maxRow) {
-      if (resizing) {
-        node.h = this.maxRow - node.y;
-      } else {
-        node.y = this.maxRow - node.h;
-      }
+
+    if (!Utils.samePos(node, before)) {
+      node._dirty = true;
     }
 
+    return this;
+  }
+
+  /**
+   * given a random node, makes sure it's coordinates/values are valid in the current grid
+   * @param node to adjust
+   * @param resizing if out of bound, resize down or move into the grid to fit ?
+   */
+  public prepareNode(node: IGridNode, resizing?: boolean): IGridNode {
+    node.id = node.id ?? `rdl-${GridLayoutEngine._idSeq++}`;
+
+    // if we're missing position, have the grid position us automatically (before we set them to 0,0)
+    if (node.x === undefined || node.y === undefined || node.x === null || node.y === null) {
+      node.autoPosition = true;
+    }
+
+    // assign defaults for missing required fields
+    let defaults: IGridNode = { x: 0, y: 0, w: 1, h: 1 };
+    Utils.defaults(node, defaults);
+
+    if (!node.autoPosition) {
+      delete node.autoPosition;
+    }
+    if (!node.noResize) {
+      delete node.noResize;
+    }
+    if (!node.noDrag) {
+      delete node.noDrag;
+    }
+    Utils.sanitizeMinMax(node);
+
+    // check for NaN (in case messed up strings were passed. can't do parseInt() || defaults.x above as 0 is valid #)
+    if (typeof node.x == 'string') {
+      node.x = Number(node.x);
+    }
+    if (typeof node.y == 'string') {
+      node.y = Number(node.y);
+    }
+    if (typeof node.w == 'string') {
+      node.w = Number(node.w);
+    }
+    if (typeof node.h == 'string') {
+      node.h = Number(node.h);
+    }
+    if (Number.isNaN(node.x)) {
+      node.x = defaults.x;
+      node.autoPosition = true;
+    }
+    if (Number.isNaN(node.y)) {
+      node.y = defaults.y;
+      node.autoPosition = true;
+    }
+    if (Number.isNaN(node.w)) {
+      node.w = defaults.w;
+    }
+    if (Number.isNaN(node.h)) {
+      node.h = defaults.h;
+    }
+
+    this.nodeBoundFix(node, resizing);
     return node;
   }
 
-  /**
-   * 获取脏节点数组
-   * @param verify 是否需要校验
-   * @returns
+  /** find the first available empty spot for the given node width/height, updating the x,y attributes. return true if found.
+   * optionally you can pass your own existing node list and column count, otherwise defaults to that engine data.
+   * Optionally pass a widget to start search AFTER, meaning the order will remain the same but possibly have empty slots we skipped
    */
-  public getDirtyNodes(verify?: boolean): IGridNode[] {
-    // 比较原始 X、Y、W、H（整个节点），因为 _dirty 可能是一个临时状态
-    if (verify) {
-      let dirtNodes: IGridNode[] = [];
-      this.nodes.forEach((n) => {
-        if (n._dirty) {
-          if (n.y === n._origY && n.x === n._origX && n.w === n._origW && n.h === n._origH) {
-            delete n._dirty;
-          } else {
-            dirtNodes.push(n);
-          }
-        }
-      });
-      return dirtNodes;
-    }
-
-    return this.nodes.filter((n) => n._dirty);
-  }
-
-  /**
-   * 清洗节点数组，去除节点的 _dirty 标识
-   */
-  public cleanNodes(): GridLayoutEngine {
-    if (this.batchMode) {
-      return this;
-    }
-    this.nodes.forEach((n) => {
-      delete n._dirty;
-    });
-    return this;
-  }
-
-  /**
-   * 添加一个节点
-   * @param node 新节点
-   * @param triggerAddEvent 是否触发添加事件
-   * @returns
-   */
-  public addNode(node: IGridNode, triggerAddEvent = false): IGridNode {
-    node = this.prepareNode(node);
-
-    node.id = node.id || `rdl-${GridLayoutEngine._idSeq++}`;
-
-    if (node.autoPosition) {
-      this._sortNodes();
-
-      for (let i = 0; ; ++i) {
-        let x = i % this.column;
-        let y = Math.floor(i / this.column);
-        if (x + node.w > this.column) {
-          continue;
-        }
-        let box: IGridNode = { id: TEMP_ID, x, y, w: node.w, h: node.h };
-        if (!this.nodes.find((n) => GridLayoutEngine.isCollisions(box, n), { x, y, node })) {
-          node.x = x;
-          node.y = y;
-          delete node.autoPosition; // found our slot
-          break;
-        }
+  public findEmptyPosition(node: IGridNode, nodeList = this.nodes, column = this.column, after?: IGridNode): boolean {
+    let start = after ? after.y * column + (after.x + after.w) : 0;
+    let found = false;
+    for (let i = start; !found; ++i) {
+      let x = i % column;
+      let y = Math.floor(i / column);
+      if (x + node.w > column) {
+        continue;
+      }
+      let box = { x, y, w: node.w, h: node.h };
+      if (!nodeList.find((n) => Utils.isCollisions(box, n))) {
+        if (node.x !== x || node.y !== y) node._dirty = true;
+        node.x = x;
+        node.y = y;
+        delete node.autoPosition;
+        found = true;
       }
     }
-
-    this.nodes.push(node);
-    if (triggerAddEvent) {
-      this.addedNodes.push(node);
-    }
-
-    this._fixCollisions(node);
-    this._packNodes();
-    return node;
-  }
-
-  public removeNode(node: IGridNode, removeDOM = true, triggerEvent = false): GridLayoutEngine {
-    if (triggerEvent) {
-      // we wait until final drop to manually track removed items (rather than during drag)
-      this.removedNodes.push(node);
-    }
-    node.id = EMPTY_ID; // hint that node is being removed
-    // TODO: .splice(findIndex(),1) would be faster but apparently there are cases we have 2 instances !
-    // (see spec 'load add new, delete others')
-    // this.nodes = this.nodes.filter(n => n !== node);
-    this.nodes.splice(
-      this.nodes.findIndex((n) => n === node),
-      1,
-    );
-    if (!this.float) {
-      this._packNodes();
-    }
-    // this._notify(node, removeDOM);
-    return this;
-  }
-
-  public removeAll(removeDOM = true): GridLayoutEngine {
-    delete this._layouts;
-    if (this.nodes.length === 0) {
-      return this;
-    }
-    if (removeDOM) {
-      this.nodes.forEach((n) => {
-        n.id = EMPTY_ID;
-      }); // hint that node is being removed
-    }
-    this.removedNodes = this.nodes;
-    this.nodes = [];
-    // this._notify(this.removedNodes, removeDOM);
-    return this;
-  }
-
-  public canMoveNode(node: IGridNode, x: number, y: number, width: number, height: number): boolean {
-    if (!this.isNodeChangedPosition(node, x, y, width, height)) {
-      return false;
-    }
-    let hasLocked = Boolean(this.nodes.find((n) => n.static));
-
-    if (!this.maxRow && !hasLocked) {
-      return true;
-    }
-
-    let clonedNode: IGridNode | null = null;
-    let clone = new GridLayoutEngine(
-      this.nodes.map((n) => {
-        if (n === node) {
-          clonedNode = Utils.cloneNode(n);
-          return clonedNode;
-        }
-        return Utils.cloneNode(n);
-      }),
-      this.column,
-      0,
-      this.float,
-    );
-
-    if (!clonedNode) {
-      return true;
-    }
-
-    clone.moveNode(clonedNode, x, y, width, height);
-
-    let canMove = true;
-    if (hasLocked) {
-      canMove =
-        canMove &&
-        !clone.nodes.find((n) => {
-          return n !== clonedNode && Boolean(n.static) && Boolean(n._dirty);
-        });
-    }
-    if (this.maxRow) {
-      canMove = canMove && clone.getRow() <= this.maxRow;
-    }
-
-    return canMove;
+    return found;
   }
 
   /**
-   * 判断是否可按高度放置
-   * @param node 需放置的节点
+   * 检查是否可以移动，并做移动相关的处理
+   * @param node 待移动布局块
+   * @param o 移动选项信息
    * @returns {boolean}
    */
-  public canBePlacedWithRespectToHeight(node: IGridNode): boolean {
-    if (!this.maxRow) {
-      return true;
+  public moveNodeCheck(node: IGridNode, o: IGridMoveOpts): boolean {
+    if (node.static) return false;
+    if (
+      !this.changedPosConstrain(node, {
+        x: o.x!,
+        y: o.y!,
+        w: o.w!,
+        h: o.h!,
+      })
+    ) {
+      return false;
     }
-
-    let clone = new GridLayoutEngine(
-      this.nodes.map((n) => Utils.cloneNode(n)),
-      this.column,
-      0,
-      this.float,
-    );
-    clone.addNode(node);
-    return clone.getRow() <= this.maxRow;
+    o.pack = true;
+    return this.moveNode(node, o);
   }
 
   /**
-   * 判断节点时候改变了位置
+   * 移动节点，如果确实移动了，返回 true
+   * @param node 待移动的布局节点
+   * @param o 移动项数据
+   * @returns {boolean}
    */
-  public isNodeChangedPosition(node: IGridNode, x: number, y: number, width: number, height: number): boolean {
-    if (typeof x !== 'number') {
-      x = node.x;
-    }
-    if (typeof y !== 'number') {
-      y = node.y;
-    }
-    if (typeof width !== 'number') {
-      width = node.w;
-    }
-    if (typeof height !== 'number') {
-      height = node.h;
+  public moveNode(node: IGridNode, o: IGridMoveOpts): boolean {
+    if (!node || !o) return false;
+    console.log('engine ~ moveNode', node);
+    let wasUndefinedPack = false;
+    if (o.pack === undefined && !this.batchMode) {
+      wasUndefinedPack = o.pack = true;
     }
 
-    if (node.maxW) {
-      width = Math.min(width, node.maxW);
-    }
-    if (node.maxH) {
-      height = Math.min(height, node.maxH);
-    }
-    if (node.minW) {
-      width = Math.max(width, node.minW);
-    }
-    if (node.minH) {
-      height = Math.max(height, node.minH);
-    }
+    // 是否是改变大小
+    let resizing = node.w !== o.w || node.h !== o.h;
+    let nn: IGridNode = Utils.copyPos({}, node, true);
+    Utils.copyPos(nn, o as IWidget);
+    this.nodeBoundFix(nn, resizing);
+    Utils.copyPos(o, nn);
 
-    if (node.x === x && node.y === y && node.w === width && node.h === height) {
+    if (!o.forceCollide && Utils.samePos(node, o as IWidget)) {
       return false;
     }
-    return true;
-  }
+    let prevPos: IWidgetPosition = Utils.copyPos({}, node);
 
-  public moveNode(
-    node: IGridNode,
-    x: number,
-    y: number,
-    width?: number,
-    height?: number,
-    noPack?: boolean,
-  ): IGridNode | null {
-    console.log('moveNode ~ beginUpadte', this.nodes);
-    if (node.static) {
-      return null;
-    }
-    if (typeof x !== 'number') {
-      x = node.x;
-    }
-    if (typeof y !== 'number') {
-      y = node.y;
-    }
-    if (typeof width !== 'number') {
-      width = node.w;
-    }
-    if (typeof height !== 'number') {
-      height = node.h;
+    // 检查我们是否需要在新位置修复碰撞
+    let collides = this.collideAll(node, nn, o.skip);
+    let needToMove = true;
+    if (collides.length) {
+      let activeDrag = node._moving && !o.nested;
+      // 检查以确保我们在拖动时实际碰撞了 50%的面积
+      let collide = activeDrag ? this.directionCollideCoverage(node, o, collides) : collides[0];
+      // debugger;
+      if (collide) {
+        needToMove = !this._fixCollisions(node, nn, collide, o); // check if already moved...
+      } else {
+        needToMove = false; // we didn't cover >50% for a move, skip...
+        if (wasUndefinedPack) delete o.pack;
+      }
     }
 
-    // constrain the passed in values and check if we're still changing our node
-    let resizing = node.w !== width || node.h !== height;
-    let nn: IGridNode = {
-      id: TEMP_ID,
-      x,
-      y,
-      w: width,
-      h: height,
-      maxW: node.maxW,
-      maxH: node.maxH,
-      minW: node.minW,
-      minH: node.minH,
-    };
-    nn = this.prepareNode(nn, resizing);
-    if (node.x === nn.x && node.y === nn.y && node.w === nn.w && node.h === nn.h) {
-      return null;
+    // 对于需要移动的进行标记，在 packNodes 内处理
+    if (needToMove) {
+      node._dirty = true;
+      Utils.copyPos(node, nn);
     }
-
-    node._dirty = true;
-
-    node.x = node._lastTriedX = nn.x;
-    node.y = node._lastTriedY = nn.y;
-    node.w = node._lastTriedWidth = nn.w;
-    node.h = node._lastTriedHeight = nn.h;
-
-    this._fixCollisions(node);
-    if (!noPack) {
+    if (o.pack) {
       this._packNodes();
     }
-    return node;
+    // pack 的时候可能会把节点位置调回去了，所以这里校验下
+    return !Utils.samePos(node, prevPos);
+  }
+
+  /**
+   * 从 nodes 拿到与指定区域重叠并忽略 skip，skip2 的布局块
+   * @param skip 忽略的块
+   * @param area 检测碰撞区域
+   * @param skip2 忽略的其他块
+   * @returns {IGridNode | undefined}
+   */
+  public collide(skip: IGridNode, area = skip, skip2?: IGridNode): IGridNode | undefined {
+    const skipId = skip.id;
+    const skip2Id = skip2?.id;
+    return this.nodes.find((n) => n.id !== skipId && n.id !== skip2Id && Utils.isCollisions(n, area));
+  }
+
+  /**
+   * 从 nodes 拿到与指定区域碰撞并忽略 skip, skip2 的布局块数组
+   * @param skip 忽略的块
+   * @param area 检测碰撞区域
+   * @param skip2 忽略的其他块
+   * @returns {IGridNode[]}
+   * @example
+   * ```typescript
+   *  this.collideAll(node, nn, o.skip); // 忽略 node 与 o.skip 块，找出所有与 nn 碰撞的节点，返回节点数组
+   * ```
+   */
+  public collideAll(skip: IGridNode, area = skip, skip2?: IGridNode): IGridNode[] {
+    const skipId = skip.id;
+    const skip2Id = skip2?.id;
+    return this.nodes.filter((n) => n.id !== skipId && n.id !== skip2Id && Utils.isCollisions(n, area));
+  }
+
+  /** true if x,y or w,h are different after clamping to min/max */
+  public changedPosConstrain(node: IGridNode, p: IWidgetPosition): boolean {
+    if (node.x !== p.x || node.y !== p.y) return true;
+    return node.w !== p.w || node.h !== p.h;
+  }
+
+  /**
+   * 置换，成功返回 true
+   * 当两个块大小相同，或同一列开始，考虑直接置换位置
+   */
+  public swap(a: IGridNode, b: IGridNode): boolean {
+    console.log('engine swap', a, b);
+    if (!b || b.static || !a || a.static) return false;
+
+    function _doSwap(): true {
+      console.log('engine ~ doSwap');
+      // assumes a is before b IFF they have different height (put after rather than exact swap)
+      let { x, y } = b;
+      b.x = a.x;
+      b.y = a.y; // b -> a position
+      if (a.h !== b.h) {
+        a.x = x;
+        a.y = b.y + b.h; // a -> goes after b
+      } else if (a.w !== b.w) {
+        a.x = b.x + b.w;
+        a.y = y; // a -> goes after b
+      } else {
+        a.x = x;
+        a.y = y; // a -> old b position
+      }
+      a._dirty = b._dirty = true;
+      return true;
+    }
+
+    // same size and same row or column, and touching
+    if (a.w === b.w && a.h === b.h && (a.x === b.x || a.y === b.y)) return _doSwap();
+
+    // check for taking same columns (but different height) and touching
+    if (a.w === b.w && a.x === b.x) {
+      if (b.y < a.y) {
+        let t = a;
+        a = b;
+        b = t;
+      } // swap a <-> b vars so a is first
+      return _doSwap();
+    }
+
+    // check if taking same row (but different width) and touching
+    if (a.h === b.h && a.y === b.y) {
+      if (b.x < a.x) {
+        let t = a;
+        a = b;
+        b = t;
+      } // swap a <-> b vars so a is first
+      return _doSwap();
+    }
+    return false;
+  }
+
+  /** sort the nodes array from first to last, or reverse. Called during collision/placement to force an order */
+  public sortNodes(dir: 1 | -1 = 1, column = this.column): GridLayoutEngine {
+    this.nodes = Utils.sort(this.nodes, dir, column);
+    return this;
   }
 
   public getRow(): number {
-    return this.nodes.reduce((memo, n) => Math.max(memo, n.y + n.h), 0);
+    return this.nodes.reduce((row, n) => Math.max(row, n.y + n.h), 0);
   }
 
-  public beginUpdate(node: IGridNode): GridLayoutEngine {
-    console.log('engine ~ beginUpadte', this.nodes);
-    if (node._updating) return this;
-    node._updating = true;
-    this.nodes.forEach((n) => {
-      n._packY = n.y;
-    });
+  /** called to cache the nodes pixel rectangles used for collision detection during drag */
+  public cacheRects(): GridLayoutEngine {
+    if (!this.layoutData) return this;
+    const { colWidth, rowHeight } = this.layoutData;
+    this.nodes.forEach(
+      (n) =>
+        (n._rect = {
+          top: n.y * rowHeight,
+          left: n.x * colWidth,
+          width: n.w * colWidth,
+          height: n.h * rowHeight,
+        }),
+    );
     return this;
   }
 
-  public endUpdate(): GridLayoutEngine {
-    console.log('engine ~ endUpadte', this.nodes);
-    let n = this.nodes.find((n) => n._updating);
-    if (n) {
-      delete n._updating;
-      this.nodes.forEach((n) => {
-        delete n._packY;
-      });
-    }
-    return this;
-  }
+  /** 根据起始位置进行像素覆盖率碰撞，返回覆盖率大于中线 50% 的节点 */
+  protected directionCollideCoverage(node: IGridNode, o: IGridMoveOpts, collides: IGridNode[]): IGridNode | undefined {
+    if (!o.rect || !node._rect) return;
+    let r0 = node._rect; // 开始位置
+    let r: IBoxPosition = { ...o.rect }; // 需校验节点的位置
 
-  /** saves the current layout returning a list of widgets for serialization */
-  public save(): IWidget[] {
-    Utils.sort(this.nodes);
-    console.log('engine ~ save', this.nodes);
-    return this.nodes.map((n) => GridLayoutEngine.gridNode2Widget(n));
-  }
-
-  /** @internal called whenever a node is added or moved - updates the cached layouts */
-  public layoutsNodesChange(nodes: IGridNode[]): GridLayoutEngine {
-    if (!this._layouts || this._ignoreLayoutsNodeChange) return this;
-    // remove smaller layouts - we will re-generate those on the fly... larger ones need to update
-    this._layouts.forEach((layout, column) => {
-      if (!layout || column === this.column) return this;
-      if (column < this.column) {
-        this._layouts![column] = undefined;
-      } else {
-        // we save the original x,y,w (h isn't cached) to see what actually changed to propagate better.
-        // Note: we don't need to check against out of bound scaling/moving as
-        // that will be done when using those cache values.
-        nodes.forEach((node) => {
-          let n = layout.find((l) => l.id === node.id);
-          if (!n) return this; // no cache for new nodes. Will use those values.
-          let ratio = column / this.column;
-          // Y changed, push down same amount
-          // TODO: detect doing item 'swaps' will help instead of move (especially in 1 column mode)
-          if (node.y !== node._origY && node._origY !== undefined) {
-            n.y += node.y - node._origY;
-          }
-          // X changed, scale from new position
-          if (node.x !== node._origX) {
-            n.x = Math.round(node.x * ratio);
-          }
-          // width changed, scale from new width
-          if (node.w !== node._origW) {
-            n.w = Math.round(node.w * ratio);
-          }
-          // ...height always carries over from cache
-        });
-      }
-    });
-    return this;
-  }
-
-  /**
-   * @internal Called to scale the widget width & position up/down based on the column change.
-   * Note we store previous layouts (especially original ones) to make it possible to go
-   * from say 12 -> 1 -> 12 and get back to where we were.
-   *
-   * @param oldColumn previous number of columns
-   * @param column  new column number
-   * @param nodes different sorted list (ex: DOM order) instead of current list
-   */
-  public updateNodeWidths(oldColumn: number, column: number, nodes: IGridNode[]): GridLayoutEngine {
-    if (!this.nodes.length || oldColumn === column) {
-      return this;
-    }
-
-    // cache the current layout in case they want to go back (like 12 -> 1 -> 12) as it requires original data
-    let copy: Layout[] = [];
-    this.nodes.forEach((n, i) => {
-      copy[i] = { x: n.x, y: n.y, w: n.w, id: n.id };
-    }); // only thing we change is x,y,w and id to find it back
-    this._layouts = this._layouts || []; // use array to find larger quick
-    this._layouts[oldColumn] = copy;
-
-    // if we're going to 1 column and using DOM order rather than default sorting, then generate that layout
-    if (column === 1 && nodes && nodes.length) {
-      let top = 0;
-      nodes.forEach((n) => {
-        n.x = 0;
-        n.w = 1;
-        n.y = Math.max(n.y, top);
-        top = n.y + n.h;
-      });
+    // update dragged rect to show where it's coming from (above or below, etc...)
+    if (r.top > r0.top) {
+      r.height += r.top - r0.top;
+      r.top = r0.top;
     } else {
-      // current column reverse sorting so we can insert last to front (limit collision)
-      nodes = Utils.sort(this.nodes, -1, oldColumn);
+      r.height += r0.top - r.top;
+    }
+    if (r.left > r0.left) {
+      r.width += r.left - r0.left;
+      r.left = r0.left;
+    } else {
+      r.width += r0.left - r.left;
     }
 
-    // see if we have cached previous layout.
-    let cacheNodes = this._layouts[column] || [];
-    // if not AND we are going up in size start with the largest layout as down-scaling is more accurate
-    let lastIndex = this._layouts.length - 1;
-    if (cacheNodes.length === 0 && column > oldColumn && column < lastIndex) {
-      cacheNodes = this._layouts[lastIndex] || [];
-      if (cacheNodes.length) {
-        // pretend we came from that larger column by assigning those values as starting point
-        oldColumn = lastIndex;
-        cacheNodes.forEach((cacheNode) => {
-          let j = nodes.findIndex((n) => n.id === cacheNode.id);
-          if (j !== -1) {
-            // still current, use cache info positions
-            nodes[j].x = cacheNode.x;
-            nodes[j].y = cacheNode.y;
-            nodes[j].w = cacheNode.w;
-          }
-        });
-        cacheNodes = []; // we still don't have new column cached data... will generate from larger one.
+    let collide: IGridNode | undefined;
+    let overMax = 0.5; // need >50%
+    collides.forEach((n) => {
+      if (n.static || !n._rect) return;
+      let r2 = n._rect; // overlapping target
+      let yOver = Number.MAX_VALUE,
+        xOver = Number.MAX_VALUE;
+      // depending on which side we started from, compute the overlap % of coverage
+      // (ex: from above/below we only compute the max horizontal line coverage)
+      if (r0.top < r2.top) {
+        // from above
+        yOver = (r.top + r.height - r2.top) / r2.height;
+      } else if (r0.top + r0.height > r2.top + r2.height) {
+        // from below
+        yOver = (r2.top + r2.height - r.top) / r2.height;
       }
-    }
-
-    // if we found cache re-use those nodes that are still current
-    let newNodes: IGridNode[] = [];
-    cacheNodes.forEach((cacheNode) => {
-      let j = nodes.findIndex((n) => n && n.id === cacheNode.id);
-      if (j !== -1) {
-        // still current, use cache info positions
-        nodes[j].x = cacheNode.x;
-        nodes[j].y = cacheNode.y;
-        nodes[j].w = cacheNode.w;
-        newNodes.push(nodes[j]);
-        nodes[j] = EMPTY_NODE; // erase it so we know what's left
+      if (r0.left < r2.left) {
+        // from the left
+        xOver = (r.left + r.width - r2.left) / r2.width;
+      } else if (r0.left + r0.width > r2.left + r2.width) {
+        // from the right
+        xOver = (r2.left + r2.width - r.left) / r2.width;
+      }
+      let over = Math.min(xOver, yOver);
+      if (over > overMax) {
+        overMax = over;
+        collide = n;
       }
     });
-    // ...and add any extra non-cached ones
-    let ratio = column / oldColumn;
-    nodes.forEach((node) => {
-      if (node === EMPTY_NODE) return this;
-      node.x = column === 1 ? 0 : Math.round(node.x * ratio);
-      node.w = column === 1 || oldColumn === 1 ? 1 : Math.round(node.w * ratio) || 1;
-      newNodes.push(node);
-    });
-
-    // finally re-layout them in reverse order (to get correct placement)
-    newNodes = Utils.sort(newNodes, -1, column);
-    this._ignoreLayoutsNodeChange = true;
-    this.batchUpdate();
-    this.nodes = []; // pretend we have no nodes to start with (we use same structures) to simplify layout
-    newNodes.forEach((node) => {
-      this.addNode(node, false); // 'false' for add event trigger
-      node._dirty = true; // force attr update
-    }, this);
-    this.commit();
-    delete this._ignoreLayoutsNodeChange;
-    return this;
+    o.collide = collide; // save it so we don't have to find it again
+    return collide;
   }
 
-  /** @internal called to save initial position/size */
-  public saveInitial(): GridLayoutEngine {
-    console.log('engine ~ initial');
-    this.nodes.forEach((n) => {
-      n._origX = n.x;
-      n._origY = n.y;
-      n._origW = n.w;
-      n._origH = n.h;
-      delete n._dirty;
-    });
-    return this;
-  }
+  /** @internal fix collision on given 'node', going to given new location 'nn', with optional 'collide' node already found.
+   * return true if we moved. */
+  protected _fixCollisions(node: IGridNode, nn = node, collide?: IGridNode, opt: IGridMoveOpts = {}): boolean {
+    this.sortNodes(-1); // from last to first, so recursive collision move items in the right order
 
-  /** @internal */
-  private _fixCollisions(node: IGridNode): GridLayoutEngine {
-    this._sortNodes(-1);
+    collide = collide || this.collide(node, nn); // REAL area collide for swap and skip if none...
+    // debugger;
+    if (!collide) return false;
 
-    let nn = node;
-    let hasLocked = Boolean(this.nodes.find((n) => n.static));
-    if (!this.float && !hasLocked) {
-      nn = { id: TEMP_ID, x: 0, y: node.y, w: this.column, h: node.h };
+    // swap check: if we're actively moving in gravity mode, see if we collide with an object the same size
+    if (node._moving && !opt.nested && !this.float) {
+      console.log('engine ~ fixCollisions swap if');
+      if (this.swap(node, collide)) return true;
     }
-    while (true) {
-      let collisionNode = this.nodes.find((n) => n !== node && GridLayoutEngine.isCollisions(n, nn), {
-        node: node,
-        nn: nn,
-      });
-      if (!collisionNode) {
-        return this;
-      }
-      let moved;
-      if (collisionNode.static) {
-        // if colliding with a locked item, move ourself instead
-        moved = this.moveNode(node, node.x, collisionNode.y + collisionNode.h, node.w, node.h, true);
+
+    // during while() collisions MAKE SURE to check entire row so larger items don't leap frog small ones (push them all down starting last in grid)
+    let area = nn;
+    if (this._useEntireRowArea(node, nn)) {
+      area = { x: 0, w: this.column, y: nn.y, h: nn.h };
+      collide = this.collide(node, area, opt.skip); // force new hit
+    }
+
+    let didMove = false;
+    let newOpt: IGridMoveOpts = {
+      nested: true,
+      pack: false,
+    };
+    while ((collide = collide || this.collide(node, area, opt.skip))) {
+      // could collide with more than 1 item... so repeat for each
+      let moved: boolean;
+      // if colliding with a locked item OR moving down with top gravity (and collide could move up) -> skip past the collide,
+      // but remember that skip down so we only do this once (and push others otherwise).
+      if (
+        collide.static ||
+        (node._moving &&
+          !node._skipDown &&
+          nn.y > node.y &&
+          !this.float &&
+          // can take space we had, or before where we're going
+          (!this.collide(collide, { ...collide, y: node.y }, node) ||
+            !this.collide(collide, { ...collide, y: nn.y - collide.h }, node)))
+      ) {
+        node._skipDown = node._skipDown || nn.y > node.y;
+        moved = this.moveNode(node, { ...nn, ...newOpt, y: collide.y + collide.h });
+        if (collide.static && moved) {
+          Utils.copyPos(nn, node); // moving after lock become our new desired location
+        } else if (!collide.static && moved && opt.pack) {
+          // we moved after and will pack: do it now and keep the original drop location, but past the old collide to see what else we might push way
+          this._packNodes();
+          nn.y = collide.y + collide.h;
+          Utils.copyPos(node, nn);
+        }
+        didMove = didMove || moved;
       } else {
-        moved = this.moveNode(collisionNode, collisionNode.x, node.y + node.h, collisionNode.w, collisionNode.h, true);
+        // move collide down *after* where we will be, ignoring where we are now (don't collide with us)
+        moved = this.moveNode(collide, { ...collide, ...newOpt, y: nn.y + nn.h, skip: node });
       }
       if (!moved) {
-        return this;
+        return didMove;
       } // break inf loop if we couldn't move after all (ex: maxRow, fixed)
+      collide = undefined;
     }
+    return didMove;
   }
 
-  private _sortNodes(dir?: -1 | 1): GridLayoutEngine {
-    this.nodes = Utils.sort(this.nodes, dir);
-    return this;
-  }
-
-  /** @internal */
-  private _packNodes(): GridLayoutEngine {
-    this._sortNodes();
+  /** @internal called to top gravity pack the items back OR revert back to original Y positions when floating */
+  protected _packNodes(): GridLayoutEngine {
+    if (this.batchMode) {
+      return this;
+    }
+    this.sortNodes(); // first to last
 
     if (this.float) {
-      this.nodes.forEach((n, i) => {
-        if (n._updating || n._packY === undefined || n.y === n._packY) {
-          return this;
-        }
+      // restore original Y pos
+      this.nodes.forEach((n) => {
+        if (n._updating || n._orig === undefined || n.y === n._orig.y) return;
         let newY = n.y;
-        while (newY >= n._packY) {
-          let box: IGridNode = { id: TEMP_ID, x: n.x, y: newY, w: n.w, h: n.h };
-          let collisionNode = this.nodes
-            .slice(0, i)
-            .find((bn) => GridLayoutEngine.isCollisions(box, bn), { n: n, newY: newY });
-          if (!collisionNode) {
+        while (newY > n._orig.y) {
+          --newY;
+          let collide = this.collide(n, { x: n.x, y: newY, w: n.w, h: n.h });
+          if (!collide) {
             n._dirty = true;
             n.y = newY;
           }
-          --newY;
         }
       });
     } else {
+      // top gravity pack
       this.nodes.forEach((n, i) => {
-        if (n.static) {
-          return this;
-        }
+        if (n.static) return;
         while (n.y > 0) {
-          let newY = n.y - 1;
-          let canBeMoved = i === 0;
-          let box: IGridNode = { id: TEMP_ID, x: n.x, y: newY, w: n.w, h: n.h };
-          if (i > 0) {
-            let collisionNode = this.nodes
-              .slice(0, i)
-              .find((bn) => GridLayoutEngine.isCollisions(box, bn), { n: n, newY: newY });
-            canBeMoved = collisionNode === undefined;
-          }
-
-          if (!canBeMoved) {
-            break;
-          }
+          let newY = i === 0 ? 0 : n.y - 1;
+          let canBeMoved = i === 0 || !this.collide(n, { x: n.x, y: newY, w: n.w, h: n.h });
+          if (!canBeMoved) break;
           // Note: must be dirty (from last position) for GridStack::OnChange CB to update positions
           // and move items back. The user 'change' CB should detect changes from the original
           // starting position instead.
@@ -757,8 +716,12 @@ export class GridLayoutEngine {
     return this;
   }
 
-  static isCollisions(a: IGridNode, b: IGridNode): boolean {
-    if (a.id === b.id) return false;
-    return !(a.y >= b.y + b.h || a.y + a.h <= b.y || a.x + a.w <= b.x || a.x >= b.x + b.w);
+  // use entire row for hitting area (will use bottom reverse sorted first) if we not actively moving DOWN and didn't already skip
+  protected _useEntireRowArea(node: IGridNode, nn: IWidgetPosition): boolean {
+    return (
+      (!this.float || (this.batchMode && !this._prevFloat)) &&
+      !this._hasLocked &&
+      (!node._moving || node._skipDown || nn.y <= node.y)
+    );
   }
 }

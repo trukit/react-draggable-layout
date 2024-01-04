@@ -67,14 +67,7 @@ function Demo1() {
       <h1>Demo1</h1>
       {/* <hr /> */}
       <div>
-        <LayoutWrapper
-          className="container"
-          col={16}
-          draggableHandle=".draggable"
-          widgets={layout}
-          gap={[1, 1]}
-          // compactType="vertical"
-        >
+        <LayoutWrapper className="container" col={16} draggableHandle=".draggable" widgets={layout} gap={[1, 1]}>
           <Widget className="box" id="item1">
             <div className="draggable" />
             <div>item1</div>

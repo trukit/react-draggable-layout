@@ -1,16 +1,16 @@
 import * as React from 'react';
-import type { IBoxPosition, ILayoutData, IWidget, IWidgetPosition } from '../types';
+import type { IBoxPosition, ILayoutData, ISize, IWidget, IWidgetPosition } from '../types';
 import styled from 'styled-components';
 import { IWidgetProps } from './Widget';
 import useSize from '../hooks/useSize';
 import Placeholder from './Placeholder';
-import { GridLayoutEngine } from '../engine-new';
+import { GridLayoutEngine } from '../engine';
 
 const Wrapper = styled.div`
   position: relative;
 `;
 
-export interface ILayoutProps {
+export interface ILayoutProps extends React.HTMLAttributes<HTMLDivElement> {
   col: number;
   widgets: IWidget[];
   children: React.ReactNode;
@@ -18,14 +18,15 @@ export interface ILayoutProps {
   resizeableHandle?: string;
   /** [x, y] 方向上每个 widget 的边距，px 数值 */
   gap?: [number, number];
-  /** 像素值传字符串例如：40px，传 number 表示为几个 col 宽度 */
+  /** 像素值传字符串例如：40px，传 number 表示为几个 col 宽度。默认为 colWidth 像素宽度 */
   rowHeight?: string | number;
-  className?: string;
+  float?: boolean;
+  initCompact?: boolean;
+  onSizeChange?: (size: ISize) => void;
 }
 
 const Layout: React.FC<ILayoutProps> = (props) => {
   const {
-    className,
     col,
     rowHeight: propsRowHieght,
     gap,
@@ -33,6 +34,10 @@ const Layout: React.FC<ILayoutProps> = (props) => {
     children,
     draggableHandle,
     resizeableHandle,
+    float,
+    initCompact,
+    onSizeChange,
+    ...ret
   } = props;
   const layoutRef = React.useRef<HTMLDivElement>(null);
   const [layoutWidgets, setLayoutWidgets] = React.useState<IWidget[]>(widgets);
@@ -51,14 +56,18 @@ const Layout: React.FC<ILayoutProps> = (props) => {
       engineRef.current = new GridLayoutEngine(
         widgets.map((w) => GridLayoutEngine.widget2GridNode(w)),
         layoutData.cols,
+        float,
       );
-      // engineRef.current.saveInitial();
+      if (initCompact) {
+        engineRef.current.compact('compact', false);
+        setLayoutWidgets(engineRef.current.getWidgets());
+      }
     }
     return () => {
       engineRef.current = null;
     };
     // 只有当 cols 数目和 widgets 数组改变时，才重新实例化布局引擎
-  }, [layoutData?.cols, widgets]);
+  }, [float, layoutData?.cols, widgets, initCompact]);
   React.useEffect(() => {
     if (engineRef.current && layoutData) {
       engineRef.current.setLayoutData(layoutData);
@@ -86,8 +95,6 @@ const Layout: React.FC<ILayoutProps> = (props) => {
       console.log(`操作 widget === ${widget.id}`, newWidgetPos);
       const tempLayoutWidgets = layoutWidgets.slice(0);
       const curWidget = tempLayoutWidgets.find((w) => w.id === widget.id) as IWidget;
-      curWidget.w = newWidgetPos.w;
-      curWidget.h = newWidgetPos.h;
       setActiveWidget(curWidget);
 
       const engine = engineRef.current;
@@ -143,6 +150,11 @@ const Layout: React.FC<ILayoutProps> = (props) => {
   );
 
   const size = useSize(layoutRef);
+  React.useEffect(() => {
+    if (size && onSizeChange) {
+      onSizeChange(size);
+    }
+  }, [onSizeChange, size]);
   const colWidth = React.useMemo<number>(() => {
     if (!size || !layoutRef.current) return 0;
     return size.width / col;
@@ -241,7 +253,7 @@ const Layout: React.FC<ILayoutProps> = (props) => {
   ]);
 
   return (
-    <Wrapper ref={layoutRef} className={className}>
+    <Wrapper {...ret} ref={layoutRef}>
       {clonedChildren}
       <Placeholder show={!!activeWidgetId} widget={activeWidget} layoutData={layoutData} />
     </Wrapper>

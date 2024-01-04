@@ -114,24 +114,14 @@ const Widget: React.FC<IWidgetProps> = (props) => {
 
   const calcNewPosition = React.useCallback<() => [IWidgetPosition, IBoxPosition] | undefined>(() => {
     if (!widgetRef.current || !actionOffsetRef.current || !layoutData || !widget) return;
-    const { colWidth, rowHeight, cols } = layoutData;
+    const { colWidth, rowHeight } = layoutData;
     const { layoutLeft, layoutTop } = actionOffsetRef.current;
     const { left, top, width, height } = widgetRef.current.getBoundingClientRect();
     let newX = Math.round((left - layoutLeft) / colWidth);
     let newY = Math.round((top - layoutTop) / rowHeight);
     // 获取新的宽高，并限制在 maxW 和 maxH 之内
-    let newW = clamp(Math.round(width / colWidth), widget.minW ?? 1, widget.maxW ?? cols);
-    let newH = clamp(Math.round(height / rowHeight), widget.minH ?? 1, widget.maxH ?? Infinity);
-    if (newX + newW > cols - 1) {
-      // 限制大小不能在拖拽时超出容器右边
-      if (newX === widget.x) {
-        newW = cols - newX;
-      } else {
-        newX = cols - newW;
-      }
-    }
-    if (newX <= 0) newX = 0;
-    if (newY <= 0) newY = 0;
+    let newW = Math.round(width / colWidth);
+    let newH = Math.round(height / rowHeight);
     return [
       {
         x: newX,
@@ -312,20 +302,25 @@ const Widget: React.FC<IWidgetProps> = (props) => {
   const [isResizeEnding, setIsResizeEnding] = React.useState<boolean>(false);
   const resizeFollow = React.useCallback(
     (e: MouseEvent) => {
-      if (!actionOffsetRef.current || !mouseDownEventRef.current || !widgetRef.current) return;
+      if (!actionOffsetRef.current || !mouseDownEventRef.current || !widgetRef.current || !layoutData) return;
       const { width, height, left, top } = actionOffsetRef.current;
       const { clientX, clientY } = mouseDownEventRef.current;
       const offsetWidth = e.clientX - clientX;
       const offsetHeight = e.clientY - clientY;
       widgetRef.current.style.left = `${left}px`;
       widgetRef.current.style.top = `${top}px`;
-      const newWidth = clamp(width + offsetWidth, layoutData?.colWidth || 0, Infinity);
-      const newHeight = clamp(height + offsetHeight, layoutData?.rowHeight || 0, Infinity);
+      // 限制大小
+      const minWidth = (widget?.minW || 1) * layoutData.colWidth;
+      const maxWidth = (widget?.maxW || layoutData.cols) * layoutData.colWidth;
+      const minHeight = (widget?.minH || 1) * layoutData.rowHeight;
+      const maxHeight = (widget?.maxH || layoutData.rows) * layoutData.rowHeight;
+      const newWidth = clamp(width + offsetWidth, minWidth, maxWidth);
+      const newHeight = clamp(height + offsetHeight, minHeight, maxHeight);
       widgetRef.current.style.width = `${newWidth}px`;
       widgetRef.current.style.height = `${newHeight}px`;
       widgetRef.current.style.transition = 'none';
     },
-    [layoutData],
+    [layoutData, widget],
   );
   const resizeMouseMove = React.useCallback(
     (e: MouseEvent) => {

@@ -1,3 +1,8 @@
+export interface ISize {
+  width: number;
+  height: number;
+}
+
 export interface ILayoutData {
   rows: number;
   cols: number;

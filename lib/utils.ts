@@ -100,3 +100,18 @@ export function isCollisions(a: IGridNode, b: IGridNode): boolean {
   if (a.id === b.id) return false;
   return !(a.y >= b.y + b.h || a.y + a.h <= b.y || a.x + a.w <= b.x || a.x >= b.x + b.w);
 }
+
+export function sanitizeMinMax(node: IGridNode) {
+  if (!node.minW) {
+    delete node.minW;
+  }
+  if (!node.minH) {
+    delete node.minH;
+  }
+  if (!node.maxW) {
+    delete node.maxW;
+  }
+  if (!node.maxH) {
+    delete node.maxH;
+  }
+}
