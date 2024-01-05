@@ -86,7 +86,13 @@ export interface IWidgetProps {
   resizeableHandle?: string;
   layoutData?: ILayoutData;
   onActionStart?: (widget: IWidget, eventType: 'drag' | 'resize') => void;
-  onActionDoing?: (widget: IWidget, newBoxPos: IBoxPosition, eventType: 'drag' | 'resize') => void;
+  onActionDoing?: (
+    widget: IWidget,
+    newBoxPos: IBoxPosition,
+    eventType: 'drag' | 'resize',
+    widgetEl: HTMLElement,
+    e: MouseEvent,
+  ) => void;
   onActionEnd?: (widget: IWidget, eventType: 'drag' | 'resize') => void;
 }
 
@@ -131,16 +137,21 @@ const Widget: React.FC<IWidgetProps> = (props) => {
     actionStartRef.current = handleActionStart;
   }, [handleActionStart]);
 
-  const actionDoingRef = React.useRef<(type: 'drag' | 'resize') => void>();
+  const actionDoingRef = React.useRef<(type: 'drag' | 'resize', e: MouseEvent) => void>();
   const handleActionDoing = React.useCallback(
-    (type: 'drag' | 'resize') => {
-      if (!widget) return;
-      const boxPos = calcBoxPosition();
-      if (boxPos) {
-        onActionDoing?.(widget, boxPos, type);
-      }
+    (type: 'drag' | 'resize', e: MouseEvent) => {
+      if (!widget || !actionOffsetRef.current || !widgetRef.current) return;
+      const { layoutLeft, layoutTop } = actionOffsetRef.current;
+      const widgetRect: DOMRect = widgetRef.current.getBoundingClientRect();
+      const boxPos: IBoxPosition = {
+        left: widgetRect.left - layoutLeft,
+        top: widgetRect.top - layoutTop,
+        width: widgetRect.width,
+        height: widgetRect.height,
+      };
+      onActionDoing?.(widget, boxPos, type, widgetRef.current, e);
     },
-    [calcBoxPosition, onActionDoing, widget],
+    [onActionDoing, widget],
   );
   React.useEffect(() => {
     // console.log('handleActionDoing');
@@ -181,7 +192,7 @@ const Widget: React.FC<IWidgetProps> = (props) => {
       if (Manager.isDragging) {
         console.log('dragging');
         dragFollow(e);
-        actionDoingRef.current?.('drag');
+        actionDoingRef.current?.('drag', e);
       } else if (Math.abs(e.x - s.x) + Math.abs(e.y - s.y) > 3) {
         console.log('dragging start');
         Manager.isDragging = true;
@@ -309,7 +320,7 @@ const Widget: React.FC<IWidgetProps> = (props) => {
       if (Manager.isReszing) {
         console.log('resizing');
         resizeFollow(e);
-        actionDoingRef.current?.('resize');
+        actionDoingRef.current?.('resize', e);
       } else if (Math.abs(e.x - s.x) + Math.abs(e.y - s.y) > 3) {
         console.log('resize start');
         Manager.isReszing = true;
