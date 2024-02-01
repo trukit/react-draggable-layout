@@ -36,11 +36,48 @@ interface IWidget extends IWidgetPosition {
     noResize?: boolean;
     autoPosition?: boolean;
 }
+interface IGridNode extends IWidget {
+    _dirty?: boolean;
+    _updating?: boolean;
+    _moving?: boolean;
+    _orig?: IWidgetPosition;
+    _rect?: IBoxPosition;
+    _packY?: number;
+    _skipDown?: boolean;
+    _lastTried?: IWidgetPosition;
+    _prevYPix?: number;
+}
 interface IBoxPosition {
     top: number;
     left: number;
     width: number;
     height: number;
+}
+interface IActionOffset {
+    top: number;
+    left: number;
+    offsetTop: number;
+    offsetLeft: number;
+    width: number;
+    height: number;
+    layoutLeft: number;
+    layoutTop: number;
+}
+interface IGridMoveOpts extends Partial<IWidgetPosition> {
+    /** node to skip collision */
+    skip?: IGridNode;
+    /** do we pack (default true) */
+    pack?: boolean;
+    /** true if we are calling this recursively to prevent simple swap or coverage collision - default false */
+    nested?: boolean;
+    /** position in pixels of the currently dragged items (for overlap check) */
+    rect?: IBoxPosition;
+    /** true if we're live resizing */
+    resizing?: boolean;
+    /** best node (most coverage) we collied with */
+    collide?: IGridNode;
+    /** for collision check even if we don't move */
+    forceCollide?: boolean;
 }
 
 interface ILayoutProps extends React.HTMLAttributes<HTMLDivElement> {
@@ -82,4 +119,4 @@ interface IBreakLayoutProps extends Omit<ILayoutProps, 'col' | 'widgets' | 'gap'
 }
 declare const BreakLayout: React.FC<IBreakLayoutProps>;
 
-export { BreakLayout, Layout, Widget };
+export { BreakLayout, type IActionOffset, type IBoxPosition, type IGridMoveOpts, type IGridNode, type ILayoutData, type ISize, type IWidget, type IWidgetPosition, Layout, Widget };
