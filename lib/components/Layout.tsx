@@ -5,7 +5,7 @@ import { IWidgetProps } from './Widget';
 import useSize from '../hooks/useSize';
 import Placeholder from './Placeholder';
 import { GridLayoutEngine } from '../engine';
-import * as Utils from '../utils';
+// import * as Utils from '../utils';
 
 const Wrapper = styled.div`
   position: relative;
@@ -111,7 +111,7 @@ const Layout: React.FC<ILayoutProps> = (props) => {
   }, []);
 
   const handleActionDoing = React.useCallback(
-    (widget: IWidget, newBoxPos: IBoxPosition, eventType: 'drag' | 'resize', widgetEl: HTMLElement, e: MouseEvent) => {
+    (widget: IWidget, newBoxPos: IBoxPosition, eventType: 'drag' | 'resize') => {
       if (!engineRef.current) return;
       const tempLayoutWidgets = layoutWidgets.slice(0);
       const curWidget = tempLayoutWidgets.find((w) => w.id === widget.id) as IWidget;

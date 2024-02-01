@@ -113,17 +113,17 @@ const Widget: React.FC<IWidgetProps> = (props) => {
   const mouseDownEventRef = React.useRef<MouseEvent | null>(null);
   const actionOffsetRef = React.useRef<IActionOffset | null>(null);
 
-  const calcBoxPosition = React.useCallback<() => IBoxPosition | undefined>(() => {
-    if (!widgetRef.current || !actionOffsetRef.current || !layoutData || !widget) return;
-    const { layoutLeft, layoutTop } = actionOffsetRef.current;
-    const { left, top, width, height } = widgetRef.current.getBoundingClientRect();
-    return {
-      left: left - layoutLeft,
-      top: top - layoutTop,
-      width,
-      height,
-    };
-  }, [layoutData, widget]);
+  // const calcBoxPosition = React.useCallback<() => IBoxPosition | undefined>(() => {
+  //   if (!widgetRef.current || !actionOffsetRef.current || !layoutData || !widget) return;
+  //   const { layoutLeft, layoutTop } = actionOffsetRef.current;
+  //   const { left, top, width, height } = widgetRef.current.getBoundingClientRect();
+  //   return {
+  //     left: left - layoutLeft,
+  //     top: top - layoutTop,
+  //     width,
+  //     height,
+  //   };
+  // }, [layoutData, widget]);
 
   const actionStartRef = React.useRef<(type: 'drag' | 'resize') => void>();
   const handleActionStart = React.useCallback(
