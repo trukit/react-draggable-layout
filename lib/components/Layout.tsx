@@ -125,21 +125,22 @@ const Layout: React.FC<ILayoutProps> = (props) => {
 
       let p = { ...node._orig };
       let resizing = false;
-      const rect = widgetEl.getBoundingClientRect();
-      let distance = 0;
-      if (node._prevYPix) {
-        distance = rect.top - node._prevYPix;
-      }
-      node._prevYPix = rect.top;
+      // TODO: 滚动到边界跟随
+      // const rect = widgetEl.getBoundingClientRect();
+      // let distance = 0;
+      // if (node._prevYPix) {
+      //   distance = rect.top - node._prevYPix;
+      // }
+      // node._prevYPix = rect.top;
       if (eventType === 'drag') {
         p.x = Math.round(newBoxPos.left / colWidth);
         p.y = Math.round(newBoxPos.top / rowHeight);
-        Utils.updateScrollPosition(widgetEl, rect, newBoxPos, distance);
+        // Utils.updateScrollPosition(widgetEl, rect, newBoxPos, distance);
         if (node.x === p.x && node.y === p.y) return;
       } else if (eventType === 'resize') {
         p.w = Math.round(newBoxPos.width / colWidth);
         p.h = Math.round(newBoxPos.height / rowHeight);
-        Utils.updateScrollResize(e, widgetEl, distance);
+        // Utils.updateScrollResize(e, widgetEl, distance);
         if (node.w === p.w && node.h === p.h) return;
         if (node._lastTried && node._lastTried.w === p.w && node._lastTried.h === p.h) return;
         resizing = true;
