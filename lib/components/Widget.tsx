@@ -227,6 +227,7 @@ const Widget: React.FC<IWidgetProps> = (props) => {
         setIsDragEnding(true);
         widgetRef.current!.style.transition = '';
         widgetRef.current!.style.position = '';
+        widgetRef.current!.style.opacity = '1';
         actionEndRef.current?.('drag');
       }
       mouseDownEventRef.current = null;
@@ -355,6 +356,7 @@ const Widget: React.FC<IWidgetProps> = (props) => {
         setIsResizeEnding(true);
         widgetRef.current!.style.transition = '';
         widgetRef.current!.style.position = '';
+        widgetRef.current!.style.opacity = '1';
         actionEndRef.current?.('resize');
       }
       mouseDownEventRef.current = null;
@@ -422,7 +424,7 @@ const Widget: React.FC<IWidgetProps> = (props) => {
     }
     if (isDragEnding || isResizeEnding) {
       widgetRef.current!.style.transition = 'none';
-      setTimeout(() => (widgetRef.current!.style.transition = ''), 30);
+      setTimeout(() => (widgetRef.current!.style.transition = ''), 300);
     }
   }, [isDragEnding, isResizeEnding]);
   const widgetRect = useWidget({

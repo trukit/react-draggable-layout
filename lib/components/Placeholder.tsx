@@ -9,11 +9,13 @@ const Wrapper = styled.div`
   box-sizing: border-box;
   z-index: 0;
   display: none;
-  transition: left 0.3s, top 0.3s, width 0.3s, height 0.3s;
+  transition: none;
   border-style: solid;
   border-color: transparent;
   &.active {
     display: block;
+    opacity: 1;
+    transition: left 0.3s, top 0.3s, width 0.3s, height 0.3s;
   }
   > div {
     position: relative;
@@ -26,13 +28,14 @@ const Wrapper = styled.div`
 `;
 
 interface IPlaceholderProps {
+  className?: string;
   show: boolean;
   widget?: IWidget;
   layoutData?: ILayoutData;
 }
 
 const Placeholder: React.FC<IPlaceholderProps> = (props) => {
-  const { widget, layoutData, show } = props;
+  const { widget, layoutData, show, className } = props;
   const widgetRef = React.useRef<HTMLDivElement>(null);
 
   const widgetRect = useWidget({
@@ -56,7 +59,7 @@ const Placeholder: React.FC<IPlaceholderProps> = (props) => {
 
   return (
     <Wrapper ref={widgetRef} className={cls({ active: show })}>
-      <div />
+      <div className={className} />
     </Wrapper>
   );
 };

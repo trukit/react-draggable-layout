@@ -24,6 +24,7 @@ export interface ILayoutProps extends React.HTMLAttributes<HTMLDivElement> {
   float?: boolean;
   initCompact?: boolean;
   onSizeChange?: (size: ISize) => void;
+  placeholderClassName?: string;
 }
 
 const Layout: React.FC<ILayoutProps> = (props) => {
@@ -38,6 +39,7 @@ const Layout: React.FC<ILayoutProps> = (props) => {
     float,
     initCompact,
     onSizeChange,
+    placeholderClassName,
     ...ret
   } = props;
   const layoutRef = React.useRef<HTMLDivElement>(null);
@@ -270,7 +272,12 @@ const Layout: React.FC<ILayoutProps> = (props) => {
   return (
     <Wrapper {...ret} ref={layoutRef}>
       {clonedChildren}
-      <Placeholder show={!!activeWidgetId} widget={activeWidget} layoutData={layoutData} />
+      <Placeholder
+        className={placeholderClassName}
+        show={!!activeWidgetId}
+        widget={activeWidget}
+        layoutData={layoutData}
+      />
     </Wrapper>
   );
 };
