@@ -10,7 +10,7 @@ const Wrapper = styled.div`
   transition: none;
   border-color: transparent;
   border-style: solid;
-  transition: left 0.3s, top 0.3s, width 0.3s, height 0.3s;
+  /* transition: left 0.3s, top 0.3s, width 0.3s, height 0.3s; */
   &.dragging,
   &.dragending,
   &.resizing,
@@ -424,7 +424,7 @@ const Widget: React.FC<IWidgetProps> = (props) => {
     }
     if (isDragEnding || isResizeEnding) {
       widgetRef.current!.style.transition = 'none';
-      setTimeout(() => (widgetRef.current!.style.transition = ''), 300);
+      // setTimeout(() => (widgetRef.current!.style.transition = ''), 300);
     }
   }, [isDragEnding, isResizeEnding]);
   const widgetRect = useWidget({
