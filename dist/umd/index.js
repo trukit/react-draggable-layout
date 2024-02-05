@@ -1130,9 +1130,9 @@
         return widgetRect;
     }
 
-    var Wrapper$2 = st.div(templateObject_1$2 || (templateObject_1$2 = __makeTemplateObject(["\n  position: absolute;\n  box-sizing: border-box;\n  z-index: 0;\n  display: none;\n  transition: left 0.3s, top 0.3s, width 0.3s, height 0.3s;\n  border-style: solid;\n  border-color: transparent;\n  &.active {\n    display: block;\n  }\n  > div {\n    position: relative;\n    margin: 0;\n    width: 100%;\n    height: 100%;\n    overflow: hidden;\n    background-color: rgba(0, 0, 0, 0.1);\n  }\n"], ["\n  position: absolute;\n  box-sizing: border-box;\n  z-index: 0;\n  display: none;\n  transition: left 0.3s, top 0.3s, width 0.3s, height 0.3s;\n  border-style: solid;\n  border-color: transparent;\n  &.active {\n    display: block;\n  }\n  > div {\n    position: relative;\n    margin: 0;\n    width: 100%;\n    height: 100%;\n    overflow: hidden;\n    background-color: rgba(0, 0, 0, 0.1);\n  }\n"])));
+    var Wrapper$2 = st.div(templateObject_1$2 || (templateObject_1$2 = __makeTemplateObject(["\n  position: absolute;\n  box-sizing: border-box;\n  z-index: 0;\n  display: none;\n  transition: none;\n  border-style: solid;\n  border-color: transparent;\n  &.active {\n    display: block;\n    opacity: 1;\n    transition: left 0.3s, top 0.3s, width 0.3s, height 0.3s;\n  }\n  > div {\n    position: relative;\n    margin: 0;\n    width: 100%;\n    height: 100%;\n    overflow: hidden;\n    background-color: rgba(0, 0, 0, 0.1);\n  }\n"], ["\n  position: absolute;\n  box-sizing: border-box;\n  z-index: 0;\n  display: none;\n  transition: none;\n  border-style: solid;\n  border-color: transparent;\n  &.active {\n    display: block;\n    opacity: 1;\n    transition: left 0.3s, top 0.3s, width 0.3s, height 0.3s;\n  }\n  > div {\n    position: relative;\n    margin: 0;\n    width: 100%;\n    height: 100%;\n    overflow: hidden;\n    background-color: rgba(0, 0, 0, 0.1);\n  }\n"])));
     var Placeholder = function (props) {
-        var widget = props.widget, layoutData = props.layoutData, show = props.show;
+        var widget = props.widget, layoutData = props.layoutData, show = props.show, className = props.className;
         var widgetRef = React__namespace.useRef(null);
         var widgetRect = useWidget({
             widget: widget,
@@ -1152,7 +1152,7 @@
             widgetRef.current.style.borderTopWidth = gap ? "".concat(gap[1] * 0.5, "px") : '0';
             widgetRef.current.style.borderBottomWidth = gap ? "".concat(gap[1] * 0.5, "px") : '0';
         }, [layoutData, widgetRect]);
-        return (jsxRuntime.jsx(Wrapper$2, __assign({ ref: widgetRef, className: cls({ active: show }) }, { children: jsxRuntime.jsx("div", {}) })));
+        return (jsxRuntime.jsx(Wrapper$2, __assign({ ref: widgetRef, className: cls({ active: show }) }, { children: jsxRuntime.jsx("div", { className: className }) })));
     };
     var templateObject_1$2;
 
@@ -1865,7 +1865,7 @@
     // import * as Utils from '../utils';
     var Wrapper$1 = st.div(templateObject_1$1 || (templateObject_1$1 = __makeTemplateObject(["\n  position: relative;\n"], ["\n  position: relative;\n"])));
     var Layout = function (props) {
-        var col = props.col, propsRowHieght = props.rowHeight, gap = props.gap, widgets = props.widgets, children = props.children, draggableHandle = props.draggableHandle, resizeableHandle = props.resizeableHandle, float = props.float, initCompact = props.initCompact, onSizeChange = props.onSizeChange, ret = __rest(props, ["col", "rowHeight", "gap", "widgets", "children", "draggableHandle", "resizeableHandle", "float", "initCompact", "onSizeChange"]);
+        var col = props.col, propsRowHieght = props.rowHeight, gap = props.gap, widgets = props.widgets, children = props.children, draggableHandle = props.draggableHandle, resizeableHandle = props.resizeableHandle, float = props.float, initCompact = props.initCompact, onSizeChange = props.onSizeChange, placeholderClassName = props.placeholderClassName, ret = __rest(props, ["col", "rowHeight", "gap", "widgets", "children", "draggableHandle", "resizeableHandle", "float", "initCompact", "onSizeChange", "placeholderClassName"]);
         var layoutRef = React__namespace.useRef(null);
         var _a = React__namespace.useState(widgets), layoutWidgets = _a[0], setLayoutWidgets = _a[1];
         var _b = React__namespace.useState(), layoutData = _b[0], setLayoutData = _b[1];
@@ -2073,11 +2073,11 @@
             rowHeight,
             widgets,
         ]);
-        return (jsxRuntime.jsxs(Wrapper$1, __assign({}, ret, { ref: layoutRef }, { children: [clonedChildren, jsxRuntime.jsx(Placeholder, { show: !!activeWidgetId, widget: activeWidget, layoutData: layoutData })] })));
+        return (jsxRuntime.jsxs(Wrapper$1, __assign({}, ret, { ref: layoutRef }, { children: [clonedChildren, jsxRuntime.jsx(Placeholder, { className: placeholderClassName, show: !!activeWidgetId, widget: activeWidget, layoutData: layoutData })] })));
     };
     var templateObject_1$1;
 
-    var Wrapper = st.div(templateObject_1 || (templateObject_1 = __makeTemplateObject(["\n  position: absolute;\n  box-sizing: border-box;\n  transition: none;\n  border-color: transparent;\n  border-style: solid;\n  transition: left 0.3s, top 0.3s, width 0.3s, height 0.3s;\n  &.dragging,\n  &.dragending,\n  &.resizing,\n  &.resizeending {\n    position: fixed;\n    z-index: 999;\n    pointer-events: none;\n    > div {\n      box-shadow: 1px 4px 6px rgba(0, 0, 0, 0.2);\n      opacity: 0.8;\n    }\n  }\n  &.dragging {\n    will-change: left, top;\n  }\n  &.resizing {\n    will-change: width, height;\n  }\n  &.dragending {\n    will-change: left, top;\n    transition: left 0.3s, top 0.3s, width 0.3s, height 0.3s;\n  }\n  &.resizeending {\n    will-change: width, height;\n    transition: left 0.3s, top 0.3s, width 0.3s, height 0.3s;\n  }\n\n  > div {\n    position: relative;\n    margin: 0;\n    width: 100%;\n    height: 100%;\n    overflow: hidden;\n  }\n\n  > .default_resize {\n    position: absolute;\n    width: 18px;\n    height: 18px;\n    bottom: 8px;\n    right: 8px;\n    opacity: 0;\n    transition: opacity 0.3s ease-in-out;\n    color: rgba(0, 0, 0, 0.3);\n    cursor: nwse-resize;\n  }\n  &:hover {\n    > .default_resize {\n      opacity: 1;\n    }\n  }\n"], ["\n  position: absolute;\n  box-sizing: border-box;\n  transition: none;\n  border-color: transparent;\n  border-style: solid;\n  transition: left 0.3s, top 0.3s, width 0.3s, height 0.3s;\n  &.dragging,\n  &.dragending,\n  &.resizing,\n  &.resizeending {\n    position: fixed;\n    z-index: 999;\n    pointer-events: none;\n    > div {\n      box-shadow: 1px 4px 6px rgba(0, 0, 0, 0.2);\n      opacity: 0.8;\n    }\n  }\n  &.dragging {\n    will-change: left, top;\n  }\n  &.resizing {\n    will-change: width, height;\n  }\n  &.dragending {\n    will-change: left, top;\n    transition: left 0.3s, top 0.3s, width 0.3s, height 0.3s;\n  }\n  &.resizeending {\n    will-change: width, height;\n    transition: left 0.3s, top 0.3s, width 0.3s, height 0.3s;\n  }\n\n  > div {\n    position: relative;\n    margin: 0;\n    width: 100%;\n    height: 100%;\n    overflow: hidden;\n  }\n\n  > .default_resize {\n    position: absolute;\n    width: 18px;\n    height: 18px;\n    bottom: 8px;\n    right: 8px;\n    opacity: 0;\n    transition: opacity 0.3s ease-in-out;\n    color: rgba(0, 0, 0, 0.3);\n    cursor: nwse-resize;\n  }\n  &:hover {\n    > .default_resize {\n      opacity: 1;\n    }\n  }\n"])));
+    var Wrapper = st.div(templateObject_1 || (templateObject_1 = __makeTemplateObject(["\n  position: absolute;\n  box-sizing: border-box;\n  transition: none;\n  border-color: transparent;\n  border-style: solid;\n  /* transition: left 0.3s, top 0.3s, width 0.3s, height 0.3s; */\n  &.dragging,\n  &.dragending,\n  &.resizing,\n  &.resizeending {\n    position: fixed;\n    z-index: 999;\n    pointer-events: none;\n    > div {\n      box-shadow: 1px 4px 6px rgba(0, 0, 0, 0.2);\n      opacity: 0.8;\n    }\n  }\n  &.dragging {\n    will-change: left, top;\n  }\n  &.resizing {\n    will-change: width, height;\n  }\n  &.dragending {\n    will-change: left, top;\n    transition: left 0.3s, top 0.3s, width 0.3s, height 0.3s;\n  }\n  &.resizeending {\n    will-change: width, height;\n    transition: left 0.3s, top 0.3s, width 0.3s, height 0.3s;\n  }\n\n  > div {\n    position: relative;\n    margin: 0;\n    width: 100%;\n    height: 100%;\n    overflow: hidden;\n  }\n\n  > .default_resize {\n    position: absolute;\n    width: 18px;\n    height: 18px;\n    bottom: 8px;\n    right: 8px;\n    opacity: 0;\n    transition: opacity 0.3s ease-in-out;\n    color: rgba(0, 0, 0, 0.3);\n    cursor: nwse-resize;\n  }\n  &:hover {\n    > .default_resize {\n      opacity: 1;\n    }\n  }\n"], ["\n  position: absolute;\n  box-sizing: border-box;\n  transition: none;\n  border-color: transparent;\n  border-style: solid;\n  /* transition: left 0.3s, top 0.3s, width 0.3s, height 0.3s; */\n  &.dragging,\n  &.dragending,\n  &.resizing,\n  &.resizeending {\n    position: fixed;\n    z-index: 999;\n    pointer-events: none;\n    > div {\n      box-shadow: 1px 4px 6px rgba(0, 0, 0, 0.2);\n      opacity: 0.8;\n    }\n  }\n  &.dragging {\n    will-change: left, top;\n  }\n  &.resizing {\n    will-change: width, height;\n  }\n  &.dragending {\n    will-change: left, top;\n    transition: left 0.3s, top 0.3s, width 0.3s, height 0.3s;\n  }\n  &.resizeending {\n    will-change: width, height;\n    transition: left 0.3s, top 0.3s, width 0.3s, height 0.3s;\n  }\n\n  > div {\n    position: relative;\n    margin: 0;\n    width: 100%;\n    height: 100%;\n    overflow: hidden;\n  }\n\n  > .default_resize {\n    position: absolute;\n    width: 18px;\n    height: 18px;\n    bottom: 8px;\n    right: 8px;\n    opacity: 0;\n    transition: opacity 0.3s ease-in-out;\n    color: rgba(0, 0, 0, 0.3);\n    cursor: nwse-resize;\n  }\n  &:hover {\n    > .default_resize {\n      opacity: 1;\n    }\n  }\n"])));
     var ResizeArrow = React__namespace.forwardRef(function (props, ref) { return (jsxRuntime.jsx("svg", __assign({}, props, { ref: ref, xmlns: "http://www.w3.org/2000/svg", width: "32", height: "32", viewBox: "0 0 24 24" }, { children: jsxRuntime.jsx("path", { fill: "none", stroke: "currentColor", strokeLinecap: "round", strokeLinejoin: "round", strokeWidth: "2", d: "M16 20h4v-4m-6-2l6 6M8 4H4v4m0-4l6 6" }) }))); });
     var Widget = function (props) {
         var id = props.id, children = props.children, className = props.className, widget = props.widget, layoutData = props.layoutData, draggableHandle = props.draggableHandle, resizeableHandle = props.resizeableHandle, onActionStart = props.onActionStart, onActionDoing = props.onActionDoing, onActionEnd = props.onActionEnd;
@@ -2184,7 +2184,11 @@
                 setIsDragEnding(true);
                 widgetRef.current.style.transition = '';
                 widgetRef.current.style.position = '';
+                widgetRef.current.style.opacity = '1';
                 (_a = actionEndRef.current) === null || _a === void 0 ? void 0 : _a.call(actionEndRef, 'drag');
+                setTimeout(function () {
+                    setIsDragEnding(false);
+                }, 330);
             }
             mouseDownEventRef.current = null;
             Manager.dragWidgetId = '';
@@ -2308,7 +2312,11 @@
                 setIsResizeEnding(true);
                 widgetRef.current.style.transition = '';
                 widgetRef.current.style.position = '';
+                widgetRef.current.style.opacity = '1';
                 (_a = actionEndRef.current) === null || _a === void 0 ? void 0 : _a.call(actionEndRef, 'resize');
+                setTimeout(function () {
+                    setIsResizeEnding(false);
+                }, 330);
             }
             mouseDownEventRef.current = null;
             Manager.resizeWidgetId = '';
@@ -2367,18 +2375,6 @@
         // ======= Layout =========
         // ========================
         var isPlaceholder = React__namespace.useMemo(function () { return isDragging || isResizing; }, [isDragging, isResizing]);
-        var handleTransitionEnd = React__namespace.useCallback(function () {
-            if (isDragEnding) {
-                setIsDragEnding(false);
-            }
-            if (isResizeEnding) {
-                setIsResizeEnding(false);
-            }
-            if (isDragEnding || isResizeEnding) {
-                widgetRef.current.style.transition = 'none';
-                setTimeout(function () { return (widgetRef.current.style.transition = ''); }, 30);
-            }
-        }, [isDragEnding, isResizeEnding]);
         var widgetRect = useWidget({
             widget: widget,
             layoutData: layoutData,
@@ -2416,7 +2412,7 @@
                 resizing: isResizing,
                 dragending: isDragEnding,
                 resizeending: isResizeEnding,
-            }), onTransitionEnd: handleTransitionEnd }, { children: [jsxRuntime.jsx("div", __assign({ className: className }, { children: children })), !resizeableHandle && !(widget === null || widget === void 0 ? void 0 : widget.static) && !(widget === null || widget === void 0 ? void 0 : widget.noResize) && (jsxRuntime.jsx(ResizeArrow, { className: "default_resize", ref: resizeElRef }))] }), id));
+            }) }, { children: [jsxRuntime.jsx("div", __assign({ className: className }, { children: children })), !resizeableHandle && !(widget === null || widget === void 0 ? void 0 : widget.static) && !(widget === null || widget === void 0 ? void 0 : widget.noResize) && (jsxRuntime.jsx(ResizeArrow, { className: "default_resize", ref: resizeElRef }))] }), id));
     };
     var templateObject_1;
 

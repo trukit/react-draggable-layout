@@ -93,6 +93,7 @@ interface ILayoutProps extends React.HTMLAttributes<HTMLDivElement> {
     float?: boolean;
     initCompact?: boolean;
     onSizeChange?: (size: ISize) => void;
+    placeholderClassName?: string;
 }
 declare const Layout: React.FC<ILayoutProps>;
 

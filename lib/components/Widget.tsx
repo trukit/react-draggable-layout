@@ -229,6 +229,9 @@ const Widget: React.FC<IWidgetProps> = (props) => {
         widgetRef.current!.style.position = '';
         widgetRef.current!.style.opacity = '1';
         actionEndRef.current?.('drag');
+        setTimeout(() => {
+          setIsDragEnding(false);
+        }, 330);
       }
       mouseDownEventRef.current = null;
       Manager.dragWidgetId = '';
@@ -358,6 +361,9 @@ const Widget: React.FC<IWidgetProps> = (props) => {
         widgetRef.current!.style.position = '';
         widgetRef.current!.style.opacity = '1';
         actionEndRef.current?.('resize');
+        setTimeout(() => {
+          setIsResizeEnding(false);
+        }, 330);
       }
       mouseDownEventRef.current = null;
       Manager.resizeWidgetId = '';
@@ -415,18 +421,6 @@ const Widget: React.FC<IWidgetProps> = (props) => {
   // ======= Layout =========
   // ========================
   const isPlaceholder = React.useMemo<boolean>(() => isDragging || isResizing, [isDragging, isResizing]);
-  const handleTransitionEnd = React.useCallback(() => {
-    if (isDragEnding) {
-      setIsDragEnding(false);
-    }
-    if (isResizeEnding) {
-      setIsResizeEnding(false);
-    }
-    if (isDragEnding || isResizeEnding) {
-      widgetRef.current!.style.transition = 'none';
-      // setTimeout(() => (widgetRef.current!.style.transition = ''), 300);
-    }
-  }, [isDragEnding, isResizeEnding]);
   const widgetRect = useWidget({
     widget,
     layoutData,
@@ -467,7 +461,6 @@ const Widget: React.FC<IWidgetProps> = (props) => {
         dragending: isDragEnding,
         resizeending: isResizeEnding,
       })}
-      onTransitionEnd={handleTransitionEnd}
     >
       <div className={className}>{children}</div>
       {!resizeableHandle && !widget?.static && !widget?.noResize && (
